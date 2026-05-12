@@ -2,197 +2,622 @@
 <html lang="ko">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Matrix-Zero Strategy Helper (AI v2.1)</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Matrix-Zero Strategy Helper v2.1</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #121212; color: #e0e0e0; padding: 20px; }
-        .container { max-width: 900px; margin: 0 auto; }
-        .matrix-grid { display: grid; grid-template-columns: repeat(3, 50px); gap: 3px; margin-bottom: 10px; }
-        input { width: 50px; height: 50px; text-align: center; background: #1e1e1e; color: white; border: 1px solid #333; font-size: 1rem; }
-        .card { background: #1e1e1e; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #333; }
-        .teams-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; } /* 2열로 변경 */
-        .team-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
-        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 1rem; }
-        button:hover { background: #0056b3; }
-        .best-move { color: #00ffcc; font-weight: bold; display: block; margin-top: 5px; }
-        .warning-box { background: rgba(255, 68, 68, 0.1); border-left: 5px solid #ff4444; padding: 10px; margin: 10px 0; }
-        .info-box { background: rgba(0, 123, 255, 0.1); border-left: 5px solid #007bff; padding: 10px; margin: 10px 0; }
-        .gauge-container { width: 100%; background: #333; height: 20px; border-radius: 10px; margin: 10px 0; overflow: hidden; }
-        .gauge-fill { height: 100%; background: linear-gradient(90deg, #007bff, #00ffcc); transition: width 0.5s; }
-        .btn-small { padding: 2px 8px; font-size: 0.7rem; background: #444; }
-        .status-badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; margin-top: 5px; }
-        .badge-win { background: #28a745; }
-        .badge-danger { background: #dc3545; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        html, body {
+            width: 100%; height: 100vh; overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #121212; color: #e0e0e0; font-size: 13px;
+        }
+
+        /* ── 전체 레이아웃: 3열 그리드 ── */
+        .app {
+            display: grid;
+            grid-template-rows: 42px 1fr;
+            grid-template-columns: 195px 1fr 258px;
+            gap: 6px;
+            padding: 6px;
+            height: 100vh;
+        }
+
+        .app-header {
+            grid-column: 1 / -1;
+            display: flex; align-items: center; gap: 14px;
+        }
+        .app-header h1 { font-size: 1rem; white-space: nowrap; }
+
+        .panel {
+            background: #1e1e1e;
+            border: 1px solid #2a2a2a;
+            border-radius: 8px;
+            padding: 10px;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+
+        /* ── 공통 라벨 ── */
+        .sec { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.8px;
+               color: #555; padding-bottom: 4px; border-bottom: 1px solid #2a2a2a;
+               margin-bottom: 7px; }
+        .mt { margin-top: 10px; }
+
+        /* ── 버튼 ── */
+        button {
+            background: #007bff; color: #fff; border: none;
+            border-radius: 4px; cursor: pointer; font-size: 0.76rem;
+            padding: 6px 10px; transition: filter 0.15s;
+        }
+        button:hover { filter: brightness(1.18); }
+        button:disabled { opacity: 0.38; cursor: not-allowed; filter: none; }
+        .btn-block { display: block; width: 100%; margin-bottom: 4px; text-align: center; }
+        .btn-success { background: #28a745; }
+        .btn-purple  { background: #6f42c1; }
+        .btn-danger  { background: #dc3545; }
+        .btn-secondary { background: #3a3a3a; }
+        .btn-sm { padding: 2px 6px; font-size: 0.63rem; background: #353535; }
+
+        /* ── 모드 버튼 ── */
+        .mode-btn {
+            display: block; width: 100%; padding: 7px 10px; margin-bottom: 4px;
+            background: #252525; color: #bbb; border: 1px solid #333; border-radius: 5px;
+            cursor: pointer; font-size: 0.78rem; text-align: left; transition: all 0.15s;
+        }
+        .mode-btn.active { background: #0d2d50; border-color: #007bff; color: #fff; }
+        .mode-btn:hover:not(.active) { background: #2a2a2a; }
+
+        /* ── 셀렉트 ── */
+        select {
+            width: 100%; background: #252525; color: #e0e0e0;
+            border: 1px solid #333; border-radius: 4px; padding: 5px 6px; font-size: 0.76rem;
+        }
+
+        /* ── 배틀 로그 ── */
+        .battle-log {
+            font-size: 0.67rem; background: #111; border-radius: 4px;
+            padding: 5px; max-height: 110px; overflow-y: auto; line-height: 1.5;
+        }
+        .log-player { color: #00ffcc; }
+        .log-ai     { color: #ff6b6b; }
+        .log-sys    { color: #777; font-style: italic; }
+
+        /* ── 턴 표시 ── */
+        .turn-pill {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 3px 10px; border-radius: 12px; font-size: 0.72rem;
+        }
+        .tp-player { background: rgba(0,255,204,.1); border: 1px solid #00ffcc; color: #00ffcc; }
+        .tp-ai     { background: rgba(255,107,107,.1); border: 1px solid #ff6b6b; color: #ff6b6b; }
+        .dot { width: 5px; height: 5px; border-radius: 50%; display: inline-block; }
+        .dot-cyan { background: #00ffcc; }
+        .dot-red  { background: #ff6b6b; animation: blink 1s infinite; }
+        @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+
+        /* ── 중앙 패널: 행렬 그리드 ── */
+        .matrices-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 7px;
+            align-content: start;
+        }
+
+        .team-card {
+            background: #252525; border: 1px solid #383838;
+            border-radius: 6px; padding: 7px; transition: border-color 0.3s;
+        }
+        .team-card.is-player { border-color: #00ffcc; }
+        .team-card.is-ai     { border-color: #ff6b6b; }
+        @keyframes cardPulse {
+            0%   { box-shadow: 0 0 0 0 rgba(255,215,0,.8); border-color: #ffd700; }
+            100% { box-shadow: 0 0 0 8px rgba(255,215,0,0); }
+        }
+        .team-card.just-moved { animation: cardPulse 0.7s ease-out; }
+
+        .team-card-header {
+            display: flex; justify-content: space-between; align-items: center;
+            margin-bottom: 5px;
+        }
+        .team-card-header h4 { font-size: 0.7rem; color: #bbb; }
+
+        .matrix-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 3px;
+        }
+        .matrix-grid input {
+            width: 100%; aspect-ratio: 1;
+            text-align: center; background: #1a1a1a; color: #e0e0e0;
+            border: 1px solid #3a3a3a; border-radius: 3px; font-size: 0.83rem;
+            padding: 0; transition: border-color 0.15s, background 0.15s;
+        }
+        .matrix-grid input:focus { outline: none; border-color: #007bff; background: #1a2a3a; }
+        .matrix-grid input.ai-last { border-color: #ffd700; background: rgba(255,215,0,.12); }
+        .matrix-grid input:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .det-line {
+            font-size: 0.6rem; color: #555; margin-top: 3px; text-align: right;
+        }
+        .det-zero { color: #ff4444 !important; font-weight: bold; }
+
+        /* ── 우측 패널: 분석 ── */
+        .stat-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 3px 0; font-size: 0.73rem; border-bottom: 1px solid #252525;
+        }
+        .stat-lbl { color: #888; }
+
+        .gauge { width: 100%; background: #2a2a2a; height: 7px; border-radius: 4px; overflow: hidden; margin: 4px 0; }
+        .gauge-fill { height: 100%; background: linear-gradient(90deg,#007bff,#00ffcc); transition: width .5s; }
+
+        .badge { display: inline-block; padding: 1px 6px; border-radius: 8px; font-size: 0.62rem; font-weight: bold; }
+        .b-win  { background: #28a745; }
+        .b-warn { background: #fd7e14; }
+        .b-lost { background: #dc3545; }
+        .b-neu  { background: #555; }
+
+        .alert { padding: 6px 8px; border-radius: 4px; font-size: 0.71rem; margin: 5px 0; }
+        .alert-danger { background: rgba(220,53,69,.12); border-left: 3px solid #dc3545; }
+        .alert-info   { background: rgba(0,123,255,.1);  border-left: 3px solid #007bff; }
+
+        .move-list { list-style: none; margin: 5px 0 0; }
+        .move-list li { padding: 4px 0; border-bottom: 1px solid #252525; font-size: 0.71rem; }
+        .move-pos  { color: #00ffcc; font-weight: bold; }
+        .move-plus { color: #28a745; }
+        .move-minus{ color: #dc3545; }
+        .move-why  { color: #777; font-size: 0.64rem; }
+
+        .rank-list { margin: 5px 0 0; }
+        .rank-row  { display: flex; justify-content: space-between; font-size: 0.69rem; padding: 2px 0; }
+        .r-me  { color: #00ffcc; }
+        .r-ai  { color: #ff6b6b; }
+        .r-oth { color: #777; }
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>🏆 Matrix-Zero Strategy Helper</h1>
-        <p>로컬에서 학습된 <code>strategy_weights.json</code> 데이터를 기반으로 최적의 수를 추천합니다.</p>
-        <div class="card">
-            <h3>모드 선택</h3>
-            <input type="radio" id="mode-advice" name="mode" value="advice" checked onchange="analyze()">
-            <label for="mode-advice">게임 조언 모드 (나의 최적의 수)</label><br>
-            <input type="radio" id="mode-ai-turn" name="mode" value="ai-turn" onchange="analyze()">
-            <label for="mode-ai-turn">AI와 대국 모드 (AI의 최적의 수)</label>
-        </div>
+<div class="app">
 
-        <div class="card">
-            <h3>전체 팀 상황 입력 (6인)</h3>
-            <div id="teams-input" class="teams-container">
-                <!-- JS에서 6개 행렬 입력창 생성 -->
-            </div>
-            <div style="margin-top: 20px;">
-                <label>라운드: </label>
-                <select id="round-select" onchange="analyze()">
+    <!-- ── 헤더 ── -->
+    <div class="app-header">
+        <h1>🏆 Matrix-Zero Strategy Helper</h1>
+        <div id="turn-display"></div>
+    </div>
+
+    <!-- ── 좌측 패널: 컨트롤 ── -->
+    <div class="panel">
+        <div class="sec">게임 모드</div>
+        <button class="mode-btn active" id="btn-mode-advice" onclick="setMode('advice')">📊 게임 조언 모드</button>
+        <button class="mode-btn"        id="btn-mode-battle" onclick="setMode('battle')">⚔️ AI 대전 모드</button>
+
+        <div class="mt">
+            <div class="sec">라운드</div>
+            <select id="round-select">
                 <option value="1">1라운드 (Ax 합산)</option>
                 <option value="2">2라운드 (Ax 합산)</option>
                 <option value="3">3라운드 (행렬식)</option>
                 <option value="4">4라운드 (행렬식)</option>
                 <option value="5">5라운드 (최종 생존)</option>
             </select>
-                <button onclick="analyze()" style="margin-left: 10px;">실시간 분석 시작</button>
-                <button id="clear-all-inputs-btn" style="margin-left: 10px; background: #6c757d;">모든 입력 초기화</button>
+        </div>
+
+        <!-- 배틀 전용 영역 -->
+        <div id="battle-area" style="display:none;">
+            <div class="mt">
+                <div class="sec">AI 대전 제어</div>
+                <button class="btn-block btn-success" onclick="startBattle()">🎮 새 게임 시작</button>
+                <button class="btn-block btn-purple"  id="btn-confirm" onclick="confirmMove()" disabled>
+                    ✅ 내 수 확정 &amp; AI 응답
+                </button>
+            </div>
+            <div class="mt">
+                <div class="sec">대전 기록</div>
+                <div class="battle-log" id="battle-log">
+                    <span class="log-sys">게임을 시작하세요</span>
+                </div>
             </div>
         </div>
 
-        <div id="result-panel" class="card" style="display: none;">
-            <h3>📊 분석 결과 (The Golden Move)</h3>
-            <div id="analysis-content"></div>
+        <div class="mt">
+            <div class="sec">초기화</div>
+            <button class="btn-block btn-secondary" onclick="resetTeam(0)">Team 1 초기화</button>
+            <button class="btn-block btn-danger"    onclick="clearAllInputs()">전체 초기화</button>
         </div>
     </div>
 
-    <script type="module">
-        import { getBestMoves, calculateDet, performLookAhead, calculateWinProbability, getPrivilegeMoves, loadAIWeights, aiWeights } from './strategy_logic.js';
+    <!-- ── 중앙 패널: 행렬 입력 ── -->
+    <div class="panel">
+        <div id="teams-input" class="matrices-grid"></div>
+    </div>
 
-        // [Fix] Functions must be defined and assigned to window BEFORE UI generation
-        window.resetTeam = function(t) {
-            for (let i = 0; i < 9; i++) {
-                const el = document.getElementById(`t${t}-c${i}`);
-                if (el) el.value = 0;
-            }
-            window.analyze();
-        };
+    <!-- ── 우측 패널: 분석 결과 ── -->
+    <div class="panel">
+        <div class="sec">분석 결과</div>
+        <div id="analysis-content">
+            <span style="color:#444;font-size:.8rem;">로딩 중...</span>
+        </div>
+    </div>
 
-        window.clearAllInputs = function() {
-            for (let t = 0; t < 6; t++) {
-                for (let i = 0; i < 9; i++) {
-                    const el = document.getElementById(`t${t}-c${i}`);
-                    if (el) el.value = 0;
-                }
-            }
-            window.analyze();
-        };
+</div>
 
-        // Named function declaration is hoisted within the module scope
-        async function analyze() {
-            const allMatrices = [];
-            const modeEl = document.querySelector('input[name="mode"]:checked');
-            const selectedMode = modeEl ? modeEl.value : 'advice';
+<script type="module">
+import {
+    getBestMoves, calculateDet, performLookAhead,
+    calculateWinProbability, loadAIWeights
+} from './strategy_logic.js';
 
-            for (let t = 0; t < 6; t++) {
-                const matrix = [];
-                for (let i = 0; i < 9; i++) {
-                    const val = document.getElementById(`t${t}-c${i}`).value;
-                    matrix.push(parseInt(val) || 0);
-                }
-                allMatrices.push(matrix);
-            }
-            
-            const myMatrix = allMatrices[0];
-            let matrixForAdvice = myMatrix;
-            let adviceTargetTeam = "당신 (Team 1)";
+/* ═══════════════════════════════════════
+   상태
+═══════════════════════════════════════ */
+let currentMode = 'advice';
+const battle = { active: false, playerTurn: false, turnCount: 0, log: [] };
 
-            if (selectedMode === 'ai-turn' && aiWeights) {
-                matrixForAdvice = allMatrices[0];
-                adviceTargetTeam = "AI (Team 1)";
-            }
+/* ═══════════════════════════════════════
+   모드 전환
+═══════════════════════════════════════ */
+window.setMode = function(mode) {
+    currentMode = mode;
+    document.getElementById('btn-mode-advice').classList.toggle('active', mode === 'advice');
+    document.getElementById('btn-mode-battle').classList.toggle('active', mode === 'battle');
+    document.getElementById('battle-area').style.display = mode === 'battle' ? 'block' : 'none';
 
-            const round = parseInt(document.getElementById('round-select').value);
-            
-            const moves = getBestMoves(matrixForAdvice, allMatrices, round); // 선택된 모드에 따라 행렬 전달
-            const lookAhead = performLookAhead(matrixForAdvice, round); // 선택된 모드에 따라 행렬 전달
-            const winProb = calculateWinProbability(allMatrices, round);
-            const priv = getPrivilegeMoves(allMatrices, round);
-            const det = calculateDet(matrixForAdvice);
+    if (mode !== 'battle') {
+        document.getElementById('turn-display').innerHTML = '';
+        enableAll();
+    }
+    refreshCardStyles();
+    analyze();
+};
 
-            let html = `
-                <div class="gauge-container"><div class="gauge-fill" style="width: ${winProb}%"></div></div>
-                <p>🏆 현재 예상 우승 확률: <strong>${winProb}%</strong></p>
-                <p>${adviceTargetTeam}의 현재 행렬식: <strong>${det}</strong></p>
-            `;
-            
-            if (selectedMode === 'ai-turn' && !aiWeights) {
-                html += `<div class="info-box"><strong>정보:</strong> AI 가중치가 로드되지 않아 휴리스틱 기반으로 AI의 최적의 수를 조언합니다.</div>`;
-            }
-
-            if (lookAhead.warning) {
-                html += `<div class="warning-box"><strong>🚨 위험 감지:</strong> ${lookAhead.msg} (탈락 위험 ${lookAhead.prob}%)</div>`;
-            }
-
-            html += `<h4>추천 액션 (Top 3):</h4><ul>`;
-            moves.forEach((move, idx) => {
-                const row = Math.floor(move.index / 3) + 1;
-                const col = (move.index % 3) + 1;
-                html += `
-                    <li>
-                        <span class="best-move">[${row}행 ${col}열]</span>에 
-                        <strong>${move.delta > 0 ? '+1' : '-1'}</strong> 조절 
-                        - <em>${move.reason}</em>
-                    </li>
-                `;
-            });
-            html += `</ul>`;
-
-            if (priv) {
-                html += `
-                    <div class="card" style="border-color: #007bff; margin-top: 15px;">
-                        <h4>🎁 권장 특권 (The Privilege)</h4>
-                        <p><strong>Team ${priv.team}</strong>의 <strong>${priv.action}</strong>을 수행하세요. (현재는 1행-2행 교환만 시뮬레이션)<br>
-                        결과적으로 당신의 우승 확률이 <strong>${priv.impact}%</strong>까지 상승합니다.</p>
-                    </div>`;
-            }
-
-            document.getElementById('analysis-content').innerHTML = html;
-            document.getElementById('result-panel').style.display = 'block';
+/* ═══════════════════════════════════════
+   행렬 UI 유틸
+═══════════════════════════════════════ */
+function getMatrices() {
+    const all = [];
+    for (let t = 0; t < 6; t++) {
+        const m = [];
+        for (let i = 0; i < 9; i++) {
+            m.push(parseInt(document.getElementById(`t${t}-c${i}`).value) || 0);
         }
-        
-        window.analyze = analyze;
+        all.push(m);
+    }
+    return all;
+}
 
-        // 6개 팀 입력 필드 생성 (Now analyze is defined, so addEventListener won't fail)
-        const container = document.getElementById('teams-input');
-        for (let t = 0; t < 6; t++) {
-            const div = document.createElement('div');
-            div.innerHTML = `
-                <div class="team-header">
-                    <h4>Team ${t+1} ${t===0 ? '(Me)' : ''}</h4>
-                    <button class="btn-small reset-team-btn" onclick="resetTeam(${t})">초기화</button>
-                </div>`;
-            const g = document.createElement('div');
-            g.className = 'matrix-grid';
-            for (let i = 0; i < 9; i++) {
-                const input = document.createElement('input');
-                input.type = 'number';
-                input.value = (t === 0 && i === 0) ? 1 : 0;
-                input.id = `t${t}-c${i}`;
-                input.addEventListener('input', analyze);
-                input.onfocus = function() { this.select(); };
-                g.appendChild(input);
-            }
-            div.appendChild(g);
-            container.appendChild(div);
+function setMatrixUI(teamIdx, matrix, highlightCell = -1) {
+    for (let i = 0; i < 9; i++) {
+        const el = document.getElementById(`t${teamIdx}-c${i}`);
+        if (!el) continue;
+        el.value = matrix[i];
+        el.classList.toggle('ai-last', i === highlightCell);
+    }
+    refreshDetLine(teamIdx, matrix);
+}
+
+function refreshDetLine(teamIdx, matrix) {
+    const el = document.getElementById(`det-${teamIdx}`);
+    if (!el) return;
+    const d = calculateDet(matrix);
+    el.textContent = `det = ${d}`;
+    el.className = 'det-line' + (d === 0 ? ' det-zero' : '');
+}
+
+function setDisabled(teamIdx, disabled) {
+    for (let i = 0; i < 9; i++) {
+        const el = document.getElementById(`t${teamIdx}-c${i}`);
+        if (el) el.disabled = disabled;
+    }
+}
+
+function enableAll() {
+    for (let t = 0; t < 6; t++) setDisabled(t, false);
+}
+
+function refreshCardStyles() {
+    for (let t = 0; t < 6; t++) {
+        const card = document.querySelector(`.team-card[data-team="${t}"]`);
+        if (!card) continue;
+        card.classList.remove('is-player', 'is-ai');
+        if (currentMode === 'battle' && battle.active) {
+            if (t === 0) card.classList.add('is-player');
+            if (t === 1) card.classList.add('is-ai');
         }
+    }
+}
 
-        // 이벤트 리스너 추가
-        document.getElementById('round-select').addEventListener('change', analyze);
-        document.getElementById('clear-all-inputs-btn').addEventListener('click', window.clearAllInputs);
-        document.getElementById('mode-advice').addEventListener('change', analyze);
-        document.getElementById('mode-ai-turn').addEventListener('change', analyze);
+/* ═══════════════════════════════════════
+   AI 대전
+═══════════════════════════════════════ */
+window.startBattle = function() {
+    battle.active = true;
+    battle.playerTurn = true;
+    battle.turnCount = 0;
+    battle.log = [];
 
-        // 페이지 로드 시 AI 가중치 로드 및 초기 분석
-        loadAIWeights().then(() => {
-            analyze();
+    // AI = Team 2: 단위행렬로 초기화
+    setMatrixUI(1, [1,0,0, 0,1,0, 0,0,1]);
+
+    // Teams 2~6 입력 잠금 (AI가 자동 조작)
+    for (let t = 1; t < 6; t++) setDisabled(t, true);
+    setDisabled(0, false);
+
+    document.getElementById('btn-confirm').disabled = false;
+    addLog('sys', '새 게임 시작! 수를 두고 "내 수 확정"을 누르세요.');
+    updateTurnUI();
+    refreshCardStyles();
+    analyze();
+};
+
+window.confirmMove = function() {
+    if (!battle.active || !battle.playerTurn) return;
+    battle.turnCount++;
+    battle.playerTurn = false;
+    updateTurnUI();
+
+    const mats = getMatrices();
+    const myDet = calculateDet(mats[0]);
+    addLog('player', `수 확정 (내 det = ${myDet})`);
+
+    const round = parseInt(document.getElementById('round-select').value);
+
+    // 승패 체크: 내 행렬이 특이행렬이면 패
+    if (myDet === 0) {
+        addLog('sys', '💀 내 행렬이 특이행렬! 패배입니다.');
+        battle.active = false;
+        document.getElementById('btn-confirm').disabled = true;
+        document.getElementById('turn-display').innerHTML = '';
+        analyze();
+        return;
+    }
+
+    // AI 응답 (0.5초 딜레이로 사고 중 효과)
+    setTimeout(() => aiTurn(mats, round), 500);
+};
+
+function aiTurn(allMats, round) {
+    const aiMatrix = allMats[1];
+    // teamIdx=1 로 전달 → AI가 자신의 점수를 기준으로 최적 수 계산
+    const moves = getBestMoves(aiMatrix, allMats, round, 1);
+
+    if (moves.length === 0) {
+        addLog('ai', '이동 불가');
+        battle.playerTurn = true;
+        updateTurnUI();
+        return;
+    }
+
+    const best = moves[0];
+    const newMat = [...aiMatrix];
+    newMat[best.index] += best.delta;
+    setMatrixUI(1, newMat, best.index);
+
+    const row = Math.floor(best.index / 3) + 1;
+    const col = (best.index % 3) + 1;
+    const aiDet = calculateDet(newMat);
+    addLog('ai', `[${row}행 ${col}열] ${best.delta > 0 ? '+1' : '-1'}  det=${aiDet}  ${best.reason}`);
+
+    // 카드 애니메이션
+    const card = document.querySelector('.team-card[data-team="1"]');
+    if (card) {
+        card.classList.add('just-moved');
+        setTimeout(() => card.classList.remove('just-moved'), 800);
+    }
+
+    if (aiDet === 0) {
+        addLog('sys', '🎉 AI 행렬이 특이행렬! 플레이어 승리!');
+        battle.active = false;
+        document.getElementById('btn-confirm').disabled = true;
+        document.getElementById('turn-display').innerHTML =
+            '<span style="color:#00ffcc;font-size:.8rem;">🏆 플레이어 승리!</span>';
+    } else {
+        battle.playerTurn = true;
+    }
+
+    updateTurnUI();
+    analyze();
+}
+
+function addLog(type, msg) {
+    battle.log.unshift({ type, msg, turn: battle.turnCount });
+    const el = document.getElementById('battle-log');
+    if (!el) return;
+    el.innerHTML = battle.log.slice(0, 30).map(e => {
+        const cls = e.type === 'player' ? 'log-player' : e.type === 'ai' ? 'log-ai' : 'log-sys';
+        const who = e.type === 'player' ? '나' : e.type === 'ai' ? 'AI' : '시스템';
+        const prefix = e.type !== 'sys' ? `[${e.turn}] ` : '';
+        return `<div class="${cls}">${prefix}${who}: ${e.msg}</div>`;
+    }).join('');
+}
+
+function updateTurnUI() {
+    const el = document.getElementById('turn-display');
+    if (currentMode !== 'battle' || !battle.active) { el.innerHTML = ''; return; }
+    if (battle.playerTurn) {
+        el.innerHTML = '<span class="turn-pill tp-player"><span class="dot dot-cyan"></span>플레이어 차례</span>';
+    } else {
+        el.innerHTML = '<span class="turn-pill tp-ai"><span class="dot dot-red"></span>AI 생각 중...</span>';
+    }
+}
+
+/* ═══════════════════════════════════════
+   초기화
+═══════════════════════════════════════ */
+window.resetTeam = function(t) {
+    const z = new Array(9).fill(0);
+    for (let i = 0; i < 9; i++) {
+        const el = document.getElementById(`t${t}-c${i}`);
+        if (el) el.value = 0;
+    }
+    refreshDetLine(t, z);
+    analyze();
+};
+
+window.clearAllInputs = function() {
+    for (let t = 0; t < 6; t++) {
+        const init = new Array(9).fill(0);
+        if (t === 0) init[0] = 1;
+        setMatrixUI(t, init);
+    }
+    analyze();
+};
+
+/* ═══════════════════════════════════════
+   분석
+═══════════════════════════════════════ */
+function analyze() {
+    try {
+        const mats  = getMatrices();
+        const round = parseInt(document.getElementById('round-select').value);
+        const myMat = mats[0];
+
+        const moves    = getBestMoves(myMat, mats, round, 0);
+        const lookAhead = performLookAhead(myMat, round);
+        const winProb  = calculateWinProbability(mats, round);
+        const det      = calculateDet(myMat);
+
+        // 전체 점수 계산
+        const x = [0,1,2].map(j => mats.reduce((s, m) => s + m[j*4], 0) / 6);
+        const scores = mats.map(m => {
+            if (round <= 2) {
+                return m[0]*x[0]+m[1]*x[1]+m[2]*x[2]+
+                       m[3]*x[0]+m[4]*x[1]+m[5]*x[2]+
+                       m[6]*x[0]+m[7]*x[1]+m[8]*x[2];
+            }
+            return calculateDet(m);
         });
-    </script>
+        const ranking = scores.map((s,i) => ({i,s})).sort((a,b) => b.s - a.s);
+        const myRank  = ranking.findIndex(r => r.i === 0) + 1;
+
+        let html = '';
+
+        // 승률
+        html += `
+            <div class="stat-row">
+                <span class="stat-lbl">예상 승률</span>
+                <span style="color:#00ffcc;font-weight:bold">${winProb}%</span>
+            </div>
+            <div class="gauge"><div class="gauge-fill" style="width:${winProb}%"></div></div>
+            <div class="stat-row">
+                <span class="stat-lbl">현재 순위</span>
+                <span class="badge ${myRank===1?'b-win':myRank<=3?'b-neu':'b-lost'}">${myRank}위</span>
+            </div>
+            <div class="stat-row">
+                <span class="stat-lbl">내 행렬식</span>
+                <span style="font-weight:bold;color:${det===0?'#ff4444':'#e0e0e0'}">${det}${det===0?' ⚠️':''}</span>
+            </div>
+        `;
+
+        // 배틀 추가 정보
+        if (currentMode === 'battle' && battle.active) {
+            const aiDet = calculateDet(mats[1]);
+            const diff  = (scores[0] - scores[1]).toFixed(1);
+            html += `
+                <div class="stat-row">
+                    <span class="stat-lbl" style="color:#ff6b6b">AI 행렬식</span>
+                    <span style="font-weight:bold;color:${aiDet===0?'#28a745':'#ff6b6b'}">${aiDet}${aiDet===0?' 🎉':''}</span>
+                </div>
+                <div class="stat-row">
+                    <span class="stat-lbl">점수 차 (나−AI)</span>
+                    <span style="color:${parseFloat(diff)>=0?'#28a745':'#dc3545'}">${diff>0?'+':''}${diff}</span>
+                </div>
+            `;
+        }
+
+        // 경고
+        if (lookAhead.warning) {
+            html += `<div class="alert alert-danger">🚨 ${lookAhead.msg}</div>`;
+        }
+
+        // 추천 수
+        html += `<div class="sec mt">추천 수 (Top 3)</div><ul class="move-list">`;
+        moves.forEach(mv => {
+            const r = Math.floor(mv.index/3)+1, c = (mv.index%3)+1;
+            html += `<li>
+                <span class="move-pos">[${r}행 ${c}열]</span>
+                <span class="${mv.delta>0?'move-plus':'move-minus'}">${mv.delta>0?'+1':'-1'}</span>
+                <br><span class="move-why">${mv.reason}</span>
+            </li>`;
+        });
+        html += `</ul>`;
+
+        // 순위표
+        html += `<div class="sec mt">전체 순위</div><div class="rank-list">`;
+        ranking.forEach((r, rank) => {
+            const isMe = r.i === 0;
+            const isAI = currentMode === 'battle' && r.i === 1;
+            const cls  = isMe ? 'r-me' : isAI ? 'r-ai' : 'r-oth';
+            html += `<div class="rank-row ${cls}">
+                <span>${rank+1}위 Team${r.i+1}${isMe?' (나)':isAI?' (AI)':''}</span>
+                <span>${r.s.toFixed(1)}</span>
+            </div>`;
+        });
+        html += `</div>`;
+
+        document.getElementById('analysis-content').innerHTML = html;
+
+        // det 라인 전체 갱신
+        mats.forEach((m, t) => refreshDetLine(t, m));
+
+    } catch (err) {
+        console.error('analyze error:', err);
+    }
+}
+
+window.analyze = analyze;
+
+/* ═══════════════════════════════════════
+   UI 생성
+═══════════════════════════════════════ */
+const container = document.getElementById('teams-input');
+for (let t = 0; t < 6; t++) {
+    const card = document.createElement('div');
+    card.className = 'team-card';
+    card.setAttribute('data-team', t);
+
+    const header = document.createElement('div');
+    header.className = 'team-card-header';
+    const label = t === 0
+        ? 'Team 1 <span style="color:#00ffcc">(Me)</span>'
+        : t === 1
+            ? 'Team 2 <span id="team2-role" style="color:#888">(타팀)</span>'
+            : `Team ${t+1}`;
+    header.innerHTML = `<h4>${label}</h4><button class="btn-sm" onclick="resetTeam(${t})">초기화</button>`;
+    card.appendChild(header);
+
+    const grid = document.createElement('div');
+    grid.className = 'matrix-grid';
+    for (let i = 0; i < 9; i++) {
+        const inp = document.createElement('input');
+        inp.type = 'number';
+        inp.value = 0;
+        inp.id = `t${t}-c${i}`;
+        // 핵심 수정: async 함수를 직접 리스너로 쓰지 않고 화살표로 감싸
+        // → 이벤트 리스너가 Promise를 반환하지 않아 메시지 채널 오류 방지
+        inp.addEventListener('input',  () => { analyze(); });
+        inp.addEventListener('focus',  function() { this.select(); });
+        grid.appendChild(inp);
+    }
+    card.appendChild(grid);
+
+    const detEl = document.createElement('div');
+    detEl.className = 'det-line';
+    detEl.id = `det-${t}`;
+    detEl.textContent = 'det = 0';
+    card.appendChild(detEl);
+
+    container.appendChild(card);
+}
+
+// 초기값: Team 1 (1,1)=1
+document.getElementById('t0-c0').value = 1;
+
+// 이벤트 (화살표로 감싸서 Promise 반환 방지)
+document.getElementById('round-select').addEventListener('change', () => { analyze(); });
+
+// 페이지 로드: AI 가중치 로드 후 초기 분석
+loadAIWeights()
+    .then(() => { analyze(); })
+    .catch(() => { analyze(); });
+</script>
 </body>
 </html>
