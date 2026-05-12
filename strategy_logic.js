@@ -48,6 +48,16 @@ export const calculateWinProbability = (allMatrices, round) => {
     return ((expScores[0] / total) * 100).toFixed(1);
 };
 
+/**
+ * UI에서 호출하는 통합 분석 함수
+ */
+export const analyze = (myMatrix, allMatrices, round) => {
+    const bestMoves = getBestMoves(myMatrix, allMatrices, round);
+    const lookAhead = performLookAhead(myMatrix, round);
+    const winProb = calculateWinProbability(allMatrices, round);
+    return { bestMoves, lookAhead, winProb };
+};
+
 export const getBestMoves = (myMatrix, allMatrices, round) => {
     // AI 가중치가 있고 AI 모드인 경우 (단순화를 위해 가중치가 있으면 AI 로직 우선 적용)
     if (aiWeights) {

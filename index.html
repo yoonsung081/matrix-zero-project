@@ -65,74 +65,46 @@
     <script type="module">
         import { getBestMoves, calculateDet, performLookAhead, calculateWinProbability, getPrivilegeMoves, loadAIWeights, aiWeights } from './strategy_logic.js';
 
-        // 6개 팀 입력 필드 생성
-        const container = document.getElementById('teams-input');
-        for (let t = 0; t < 6; t++) {
-            const div = document.createElement('div');
-            div.innerHTML = `
-                <div class="team-header">
-                    <h4>Team ${t+1} ${t===0 ? '(Me)' : ''}</h4>
-                    <button class="btn-small reset-team-btn" data-team-idx="${t}">초기화</button>
-                </div>`;
-            const g = document.createElement('div');
-            g.className = 'matrix-grid';
+        // [Fix] Functions must be defined and assigned to window BEFORE UI generation
+        window.resetTeam = function(t) {
             for (let i = 0; i < 9; i++) {
-                const input = document.createElement('input');
-                input.type = 'number';
-                input.value = (t === 0 && i === 0) ? 1 : 0; // Team 1의 첫 칸만 1로 초기화, 나머지는 0
-                input.id = `t${t}-c${i}`;
-                input.addEventListener('input', analyze); // 입력 변경 시 자동 분석
-                input.onfocus = function() { this.select(); }; // 클릭 시 전체 선택 (수정 용이)
-                g.appendChild(input);
+                const el = document.getElementById(`t${t}-c${i}`);
+                if (el) el.value = 0;
             }
-            div.appendChild(g);
-            container.appendChild(div);
-        }
-
-        // 이벤트 리스너 추가
-        document.getElementById('round-select').addEventListener('change', analyze);
-        document.getElementById('clear-all-inputs-btn').addEventListener('click', clearAllInputs);
-        document.getElementById('mode-advice').addEventListener('change', analyze);
-        document.getElementById('mode-ai-turn').addEventListener('change', analyze);
-
-        // 페이지 로드 시 AI 가중치 로드 및 초기 분석
-        loadAIWeights().then(() => {
-            analyze(); // 가중치 로드 후 초기 분석 실행
-        });
-
-        window.resetTeam = (t) => {
-            for (let i = 0; i < 9; i++) {
-                document.getElementById(`t${t}-c${i}`).value = 0;
-            }
-            analyze();
+            window.analyze();
         };
 
-        window.clearAllInputs = () => {
+        window.clearAllInputs = function() {
             for (let t = 0; t < 6; t++) {
                 for (let i = 0; i < 9; i++) {
-                    document.getElementById(`t${t}-c${i}`).value = 0;
+                    const el = document.getElementById(`t${t}-c${i}`);
+                    if (el) el.value = 0;
                 }
             }
-            analyze(); // 입력 지운 후 다시 분석
+            window.analyze();
         };
 
-        // analyze 함수를 window 객체에 할당하여 HTML에서 접근 가능하게 함
-        window.analyze = async () => {
+        // Named function declaration is hoisted within the module scope
+        async function analyze() {
             const allMatrices = [];
-            const selectedMode = document.querySelector('input[name="mode"]:checked').value;
+            const modeEl = document.querySelector('input[name="mode"]:checked');
+            const selectedMode = modeEl ? modeEl.value : 'advice';
 
             for (let t = 0; t < 6; t++) {
-                allMatrices.push(Array.from({length: 9}, (_, i) => 
-                    parseInt(document.getElementById(`t${t}-c${i}`).value) || 0
-                ));
+                const matrix = [];
+                for (let i = 0; i < 9; i++) {
+                    const val = document.getElementById(`t${t}-c${i}`).value;
+                    matrix.push(parseInt(val) || 0);
+                }
+                allMatrices.push(matrix);
             }
             
             const myMatrix = allMatrices[0];
             let matrixForAdvice = myMatrix;
             let adviceTargetTeam = "당신 (Team 1)";
 
-            if (selectedMode === 'ai-turn' && aiWeights) { // AI 모드이고 가중치가 로드된 경우
-                matrixForAdvice = allMatrices[0]; // AI (Team 1)의 행렬
+            if (selectedMode === 'ai-turn' && aiWeights) {
+                matrixForAdvice = allMatrices[0];
                 adviceTargetTeam = "AI (Team 1)";
             }
 
@@ -183,7 +155,44 @@
 
             document.getElementById('analysis-content').innerHTML = html;
             document.getElementById('result-panel').style.display = 'block';
-        };
+        }
+        
+        window.analyze = analyze;
+
+        // 6개 팀 입력 필드 생성 (Now analyze is defined, so addEventListener won't fail)
+        const container = document.getElementById('teams-input');
+        for (let t = 0; t < 6; t++) {
+            const div = document.createElement('div');
+            div.innerHTML = `
+                <div class="team-header">
+                    <h4>Team ${t+1} ${t===0 ? '(Me)' : ''}</h4>
+                    <button class="btn-small reset-team-btn" onclick="resetTeam(${t})">초기화</button>
+                </div>`;
+            const g = document.createElement('div');
+            g.className = 'matrix-grid';
+            for (let i = 0; i < 9; i++) {
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.value = (t === 0 && i === 0) ? 1 : 0;
+                input.id = `t${t}-c${i}`;
+                input.addEventListener('input', analyze);
+                input.onfocus = function() { this.select(); };
+                g.appendChild(input);
+            }
+            div.appendChild(g);
+            container.appendChild(div);
+        }
+
+        // 이벤트 리스너 추가
+        document.getElementById('round-select').addEventListener('change', analyze);
+        document.getElementById('clear-all-inputs-btn').addEventListener('click', window.clearAllInputs);
+        document.getElementById('mode-advice').addEventListener('change', analyze);
+        document.getElementById('mode-ai-turn').addEventListener('change', analyze);
+
+        // 페이지 로드 시 AI 가중치 로드 및 초기 분석
+        loadAIWeights().then(() => {
+            analyze();
+        });
     </script>
 </body>
 </html>
