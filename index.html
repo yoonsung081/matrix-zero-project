@@ -52,7 +52,7 @@
                 <option value="5">5라운드 (최종 생존)</option>
             </select>
                 <button onclick="analyze()" style="margin-left: 10px;">실시간 분석 시작</button>
-                <button id="clear-all-inputs-btn" style="margin-left: 10px; background: #6c757d;">모든 입력 지우기</button>
+                <button id="clear-all-inputs-btn" style="margin-left: 10px; background: #6c757d;">모든 입력 초기화</button>
             </div>
         </div>
 
@@ -72,7 +72,7 @@
             div.innerHTML = `
                 <div class="team-header">
                     <h4>Team ${t+1} ${t===0 ? '(Me)' : ''}</h4>
-                    <button class="btn-small" onclick="resetTeam(${t})">초기화</button>
+                    <button class="btn-small reset-team-btn" data-team-idx="${t}">초기화</button>
                 </div>`;
             const g = document.createElement('div');
             g.className = 'matrix-grid';

@@ -41,7 +41,7 @@ export const calculateWinProbability = (allMatrices, round) => {
                      m[3]*x[0] + m[4]*x[1] + m[5]*x[2] +
                      m[6]*x[0] + m[7]*x[1] + m[8]*x[2];
         }
-        return round <= 2 ? ax_sum : Math.abs(calculateDet(m));
+        return round <= 2 ? ax_sum : calculateDet(m); // 라운드 3-5는 행렬식 값 자체가 점수
     });
     const expScores = scores.map(s => Math.exp(s / 10));
     const total = expScores.reduce((a, b) => a + b, 0);
