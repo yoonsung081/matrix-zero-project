@@ -2,7 +2,19 @@
  * Evo-Matrix Optimizer: 실시간 추천 및 Look-ahead 로직
  */
 
-let aiWeights = null; // Python에서 학습된 가중치를 저장할 변수
+export let aiWeights = null; // Python에서 학습된 가중치를 저장할 변수
+
+export const loadAIWeights = async () => {
+    try {
+        const response = await fetch('./strategy_weights.json');
+        if (!response.ok) throw new Error("File not found");
+        const data = await response.json();
+        aiWeights = data.weights;
+        console.log("AI 가중치 로드 성공");
+    } catch (error) {
+        console.warn("AI 가중치 로드 실패 (휴리스틱 모드 작동):", error);
+    }
+};
 
 export const calculateDet = (m) => {
     return m[0] * (m[4] * m[8] - m[5] * m[7]) -
@@ -37,6 +49,44 @@ export const calculateWinProbability = (allMatrices, round) => {
 };
 
 export const getBestMoves = (myMatrix, allMatrices, round) => {
+    // AI 가중치가 있고 AI 모드인 경우 (단순화를 위해 가중치가 있으면 AI 로직 우선 적용)
+    if (aiWeights) {
+        let candidates = [];
+        // 특징 벡터 구성 (Python과 동일하게 20차원)
+        const x = calculateX(allMatrices);
+        const feat = new Array(20).fill(0);
+        myMatrix.forEach((v, idx) => feat[idx] = v);
+        x.forEach((v, idx) => feat[9 + idx] = v);
+        feat[12] = round;
+
+        // 모든 18가지 액션에 대해 Logit 계산
+        for (let actionIdx = 0; actionIdx < 18; actionIdx++) {
+            let logit = 0;
+            for (let f = 0; f < 20; f++) {
+                logit += feat[f] * aiWeights[f][actionIdx];
+            }
+
+            const cellIdx = Math.floor(actionIdx / 2);
+            const delta = (actionIdx % 2 === 0) ? 1 : -1;
+            
+            // 시뮬레이션 점수 (UI 표시용)
+            let nextMat = [...myMatrix];
+            nextMat[cellIdx] += delta;
+            const det = calculateDet(nextMat);
+
+            candidates.push({
+                index: cellIdx,
+                delta: delta,
+                score: logit, // AI의 판단 점수
+                det: det,
+                reason: logit > 0 ? "AI 추천 전략" : "점수 최적화",
+                isUnique: false
+            });
+        }
+        return candidates.sort((a, b) => b.score - a.score).slice(0, 3);
+    }
+
+    // 가중치가 없을 때 사용하는 기존 휴리스틱 로직
     const prevX = calculateX(allMatrices);
     let candidates = [];
 

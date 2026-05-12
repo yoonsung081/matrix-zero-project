@@ -116,13 +116,6 @@
             analyze(); // 입력 지운 후 다시 분석
         };
 
-        window.resetTeam = (t) => {
-            for (let i = 0; i < 9; i++) {
-                document.getElementById(`t${t}-c${i}`).value = 0;
-            }
-            analyze();
-        };
-
         // analyze 함수를 window 객체에 할당하여 HTML에서 접근 가능하게 함
         window.analyze = async () => {
             const allMatrices = [];
