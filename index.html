@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Matrix-Zero Strategy Helper (AI v2.1)</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #121212; color: #e0e0e0; padding: 20px; }
+        .container { max-width: 900px; margin: 0 auto; }
+        .matrix-grid { display: grid; grid-template-columns: repeat(3, 50px); gap: 3px; margin-bottom: 10px; }
+        input { width: 50px; height: 50px; text-align: center; background: #1e1e1e; color: white; border: 1px solid #333; font-size: 1rem; }
+        .card { background: #1e1e1e; padding: 20px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #333; }
+        .teams-container { display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px; } /* 2열로 변경 */
+        .team-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 1rem; }
+        button:hover { background: #0056b3; }
+        .best-move { color: #00ffcc; font-weight: bold; display: block; margin-top: 5px; }
+        .warning-box { background: rgba(255, 68, 68, 0.1); border-left: 5px solid #ff4444; padding: 10px; margin: 10px 0; }
+        .info-box { background: rgba(0, 123, 255, 0.1); border-left: 5px solid #007bff; padding: 10px; margin: 10px 0; }
+        .gauge-container { width: 100%; background: #333; height: 20px; border-radius: 10px; margin: 10px 0; overflow: hidden; }
+        .gauge-fill { height: 100%; background: linear-gradient(90deg, #007bff, #00ffcc); transition: width 0.5s; }
+        .btn-small { padding: 2px 8px; font-size: 0.7rem; background: #444; }
+        .status-badge { display: inline-block; padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; margin-top: 5px; }
+        .badge-win { background: #28a745; }
+        .badge-danger { background: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏆 Matrix-Zero Strategy Helper</h1>
+        <p>로컬에서 학습된 <code>strategy_weights.json</code> 데이터를 기반으로 최적의 수를 추천합니다.</p>
+        <div class="card">
+            <h3>모드 선택</h3>
+            <input type="radio" id="mode-advice" name="mode" value="advice" checked onchange="analyze()">
+            <label for="mode-advice">게임 조언 모드 (나의 최적의 수)</label><br>
+            <input type="radio" id="mode-ai-turn" name="mode" value="ai-turn" onchange="analyze()">
+            <label for="mode-ai-turn">AI와 대국 모드 (AI의 최적의 수)</label>
+        </div>
+
+        <div class="card">
+            <h3>전체 팀 상황 입력 (6인)</h3>
+            <div id="teams-input" class="teams-container">
+                <!-- JS에서 6개 행렬 입력창 생성 -->
+            </div>
+            <div style="margin-top: 20px;">
+                <label>라운드: </label>
+                <select id="round-select" onchange="analyze()">
+                <option value="1">1라운드 (Ax 합산)</option>
+                <option value="2">2라운드 (Ax 합산)</option>
+                <option value="3">3라운드 (행렬식)</option>
+                <option value="4">4라운드 (행렬식)</option>
+                <option value="5">5라운드 (최종 생존)</option>
+            </select>
+                <button onclick="analyze()" style="margin-left: 10px;">실시간 분석 시작</button>
+                <button onclick="clearAllInputs()" style="margin-left: 10px; background: #6c757d;">모든 입력 지우기</button>
+            </div>
+        </div>
+
+        <div id="result-panel" class="card" style="display: none;">
+            <h3>📊 분석 결과 (The Golden Move)</h3>
+            <div id="analysis-content"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { getBestMoves, calculateDet, performLookAhead, calculateWinProbability, getPrivilegeMoves, loadAIWeights } from './strategy_logic.js';
+
+        // 6개 팀 입력 필드 생성
+        const container = document.getElementById('teams-input');
+        for (let t = 0; t < 6; t++) {
+            const div = document.createElement('div');
+            div.innerHTML = `
+                <div class="team-header">
+                    <h4>Team ${t+1} ${t===0 ? '(Me)' : ''}</h4>
+                    <button class="btn-small" onclick="resetTeam(${t})">초기화</button>
+                </div>`;
+            const g = document.createElement('div');
+            g.className = 'matrix-grid';
+            for (let i = 0; i < 9; i++) {
+                const input = document.createElement('input'); // input element
+                input.type = 'number';
+                input.value = 0; // 초기값 0
+                input.id = `t${t}-c${i}`;
+                input.oninput = analyze; // 입력 변경 시 자동 분석
+                input.onfocus = function() { this.select(); }; // 클릭 시 전체 선택 (수정 용이)
+                g.appendChild(input);
+            }
+            div.appendChild(g);
+            container.appendChild(div);
+        }
+
+        // 페이지 로드 시 AI 가중치 로드
+        loadAIWeights();
+
+        window.resetTeam = (t) => {
+            for (let i = 0; i < 9; i++) {
+                document.getElementById(`t${t}-c${i}`).value = 0;
+            }
+            analyze();
+        };
+
+        window.clearAllInputs = () => {
+            for (let t = 0; t < 6; t++) {
+                for (let i = 0; i < 9; i++) {
+                    document.getElementById(`t${t}-c${i}`).value = 0;
+                }
+            }
+            analyze(); // 입력 지운 후 다시 분석
+        };
+
+        window.analyze = async () => {
+            const allMatrices = [];
+            const selectedMode = document.querySelector('input[name="mode"]:checked').value;
+
+            for (let t = 0; t < 6; t++) {
+                allMatrices.push(Array.from({length: 9}, (_, i) => 
+                    parseInt(document.getElementById(`t${t}-c${i}`).value) || 0
+                ));
+            }
+            
+            const myMatrix = allMatrices[0];
+            let matrixForAdvice = myMatrix; // 기본은 나의 행렬
+            let adviceTargetTeam = "당신 (Team 1)";
+
+            if (selectedMode === 'ai-turn') {
+                matrixForAdvice = allMatrices[0]; // AI (Team 1)의 행렬
+                adviceTargetTeam = "AI (Team 1)";
+            }
+
+            const round = parseInt(document.getElementById('round-select').value);
+            
+            const moves = getBestMoves(matrixForAdvice, allMatrices, round); // 선택된 모드에 따라 행렬 전달
+            const lookAhead = performLookAhead(matrixForAdvice, round); // 선택된 모드에 따라 행렬 전달
+            const winProb = calculateWinProbability(allMatrices, round);
+            const priv = getPrivilegeMoves(allMatrices, round);
+            const det = calculateDet(matrixForAdvice);
+
+            let html = `
+                <div class="gauge-container"><div class="gauge-fill" style="width: ${winProb}%"></div></div>
+                <p>🏆 현재 예상 우승 확률: <strong>${winProb}%</strong></p>
+                <p>${adviceTargetTeam}의 현재 행렬식: <strong>${det}</strong></p>
+            `;
+
+            if (lookAhead.warning) {
+                html += `<div class="warning-box"><strong>🚨 위험 감지:</strong> ${lookAhead.msg} (탈락 위험 ${lookAhead.prob}%)</div>`;
+            }
+
+            html += `<h4>추천 액션 (Top 3):</h4><ul>`;
+            moves.forEach((move, idx) => {
+                const row = Math.floor(move.index / 3) + 1;
+                const col = (move.index % 3) + 1;
+                html += `
+                    <li>
+                        <span class="best-move">[${row}행 ${col}열]</span>에 
+                        <strong>${move.delta > 0 ? '+1' : '-1'}</strong> 조절 
+                        - <em>${move.reason}</em>
+                    </li>
+                `;
+            });
+            html += `</ul>`;
+
+            if (priv) {
+                html += `
+                    <div class="card" style="border-color: #007bff; margin-top: 15px;">
+                        <h4>🎁 권장 특권 (The Privilege)</h4>
+                        <p><strong>Team ${priv.team}</strong>의 <strong>${priv.action}</strong>을 수행하세요. (현재는 1행-2행 교환만 시뮬레이션)<br>
+                        결과적으로 당신의 우승 확률이 <strong>${priv.impact}%</strong>까지 상승합니다.</p>
+                    </div>`;
+            }
+
+            document.getElementById('analysis-content').innerHTML = html;
+            document.getElementById('result-panel').style.display = 'block';
+        };
+    </script>
+</body>
+</html>
