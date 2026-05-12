@@ -64,9 +64,9 @@ export const getBestMoves = (myMatrix, allMatrices, round) => {
             // 동점자 방지 및 승산(Odds) 가중치 (단독 1위 선호)
             let tieBreakerBonus = 0;
             const otherScores = nextAll.slice(1).map(m => {
-                if (round <= 2) return m[0]*nextX[0] + m[4]*nextX[1] + m[8]*nextX[2]; // 간략화된 Ax
-                return calculateDet(m);
-            });
+                // Ax 합산 계산 로직 수정: 모든 성분 반영
+                const otherAxSum = m[0]*nextX[0] + m[1]*nextX[1] + m[2]*nextX[2] + m[3]*nextX[0] + m[4]*nextX[1] + m[5]*nextX[2] + m[6]*nextX[0] + m[7]*nextX[1] + m[8]*nextX[2];
+                return round <= 2 ? otherAxSum : calculateDet(m);            });
             const isUniqueWinner = otherScores.every(s => s < score);
             if (isUniqueWinner) tieBreakerBonus = 50; 
 
