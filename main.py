@@ -48,7 +48,7 @@ import json
 import random
 from tqdm import tqdm
 
-PRIV_NAMES = ["행/열 교환", "원소 0으로 만들기", "두 원소 위치 교환"]
+PRIV_NAMES = ["행 교환", "열 교환", "원소 0으로 만들기", "두 원소 위치 교환"]
 
 # ── 특징 벡터 차원 ──────────────────────────────────────────────
 # [0:9]   내 행렬 (9)
@@ -61,7 +61,9 @@ PRIV_NAMES = ["행/열 교환", "원소 0으로 만들기", "두 원소 위치 �
 # [27:30] 패딩 (3)
 FEAT_DIM = 30
 ACT_DIM  = 18   # 9칸 × ±1
-PRIV_DIM = 18   # 3종류 × 6대상
+PRIV_DIM = 8    # 4종류 × 2선택(나에게만=0 / 전체 타팀=1)
+#   priv_action_idx // 2 → priv_type (0=행교환, 1=열교환, 2=원소0, 3=두원소교환)
+#   priv_action_idx %  2 → scope     (0=나에게, 1=전체 타팀)
 
 
 class MatrixGame:
@@ -113,19 +115,19 @@ class MatrixGame:
         for i in range(self.num_players):
             det = self.get_score(i, mode="det")
             if det != 0:
-                survivors.append((self.get_score(i, mode="ax"), abs(det), i))
+                # 동점 시 det(A) 값 자체로 비교 (절댓값 아님)
+                survivors.append((self.get_score(i, mode="ax"), det, i))
         if not survivors:
             return None
         return sorted(survivors, key=lambda x: (x[0], x[1]), reverse=True)[0][2]
 
     def get_reward(self, player_idx):
         if self.current_round == 5:
-            det    = self.get_score(player_idx, mode="det")
-            ax_sum = self.get_score(player_idx, mode="ax")
+            det = self.get_score(player_idx, mode="det")
             if det == 0:
                 return -1000.0
             is_winner = (self.get_final_winner() == player_idx)
-            return (ax_sum * 10) + (5000 if is_winner else 0)
+            return 5000.0 if is_winner else 0.0
         return 100.0 if self.get_round_winner() == player_idx else 0.0
 
     def reset_game(self):
@@ -216,10 +218,82 @@ class MatrixGame:
         self.matrices[p_idx][r_idx, c_idx] += v
         return feat, action_idx
 
+    def _best_priv_position_global(self, priv_type, winner_idx):
+        """
+        전체 타팀에 일괄 적용할 단일 최적 위치 탐색.
+        기준: 동일 위치를 모든 타팀에 적용했을 때 타팀 점수 합이 최소.
+        priv_type: 0=행교환, 1=열교환, 2=원소0, 3=두원소교환
+        """
+        others = [t for t in range(self.num_players) if t != winner_idx]
+        best_effect = None
+        best_total  = float('inf')
+
+        if priv_type == 0:  # 행 교환
+            for i, j in [(0,1),(0,2),(1,2)]:
+                total = 0
+                for t in others:
+                    m_new = self.matrices[t].copy()
+                    tmp = m_new[i].copy(); m_new[i] = m_new[j]; m_new[j] = tmp
+                    total += self._eval_matrix(m_new)
+                if total < best_total:
+                    best_total = total; best_effect = (i, j)
+
+        elif priv_type == 1:  # 열 교환
+            for i, j in [(0,1),(0,2),(1,2)]:
+                total = 0
+                for t in others:
+                    m_new = self.matrices[t].copy()
+                    tmp = m_new[:,i].copy(); m_new[:,i] = m_new[:,j]; m_new[:,j] = tmp
+                    total += self._eval_matrix(m_new)
+                if total < best_total:
+                    best_total = total; best_effect = (i, j)
+
+        elif priv_type == 2:  # 원소 0
+            for r in range(3):
+                for c in range(3):
+                    total = 0
+                    for t in others:
+                        m_new = self.matrices[t].copy()
+                        m_new[r, c] = 0
+                        total += self._eval_matrix(m_new)
+                    if total < best_total:
+                        best_total = total; best_effect = (r, c)
+
+        elif priv_type == 3:  # 두 원소 교환
+            pos = [(r, c) for r in range(3) for c in range(3)]
+            for k in range(len(pos)):
+                for l in range(k+1, len(pos)):
+                    r1,c1 = pos[k]; r2,c2 = pos[l]
+                    total = 0
+                    for t in others:
+                        m_new = self.matrices[t].copy()
+                        tmp = m_new[r1,c1].copy()
+                        m_new[r1,c1] = m_new[r2,c2]; m_new[r2,c2] = tmp
+                        total += self._eval_matrix(m_new)
+                    if total < best_total:
+                        best_total = total; best_effect = (r1,c1,r2,c2)
+
+        return best_effect
+
+    def apply_privilege(self, winner_idx, priv_type, scope):
+        """
+        특권 실제 적용.
+        scope=0 : 나에게만        → 내 점수 최대화하는 위치 선택
+        scope=1 : 전체 타팀 일괄 → 타팀 점수 합 최소화하는 단일 위치로 전원 적용
+        """
+        if scope == 0:
+            effect = self._best_priv_position(priv_type, winner_idx, minimize=False)
+            self._apply_priv(priv_type, winner_idx, effect)
+        else:
+            effect = self._best_priv_position_global(priv_type, winner_idx)
+            for t in range(self.num_players):
+                if t != winner_idx:
+                    self._apply_priv(priv_type, t, effect)
+
     def agent_learner_privilege(self, winner_idx, temperature=0.0):
         """
         학습 에이전트 특권 선택.
-        특권 액션: priv_type(0~2) * 6 + target_idx(0~5)
+        특권 액션 공간: priv_type(0~2) * 2 + scope(0=나 / 1=전체타팀) = 6가지
         """
         feat   = self._get_feature(winner_idx)
         logits = cp.dot(feat, self.priv_weights)
@@ -229,21 +303,17 @@ class MatrixGame:
         else:
             priv_action_idx = int(to_cpu(cp.argmax(logits)))
 
-        priv_type  = priv_action_idx // 6
-        target_idx = priv_action_idx % 6
-        minimize   = (target_idx != winner_idx)
+        priv_type = priv_action_idx // 2
+        scope     = priv_action_idx % 2   # 0=나에게, 1=전체 타팀
 
-        effect = self._best_priv_position(priv_type, target_idx, minimize)
-        self._apply_priv(priv_type, target_idx, effect)
+        self.apply_privilege(winner_idx, priv_type, scope)
         return feat, priv_action_idx
 
     def agent_random_privilege(self, winner_idx):
-        """랜덤 에이전트의 특권: 유형·대상 랜덤, 위치 greedy"""
-        priv_type  = random.randint(0, 2)
-        target_idx = random.randint(0, self.num_players - 1)
-        minimize   = (target_idx != winner_idx)
-        effect = self._best_priv_position(priv_type, target_idx, minimize)
-        self._apply_priv(priv_type, target_idx, effect)
+        """랜덤 에이전트의 특권: 유형·범위 랜덤, 위치 greedy"""
+        priv_type = random.randint(0, 2)
+        scope     = random.randint(0, 1)
+        self.apply_privilege(winner_idx, priv_type, scope)
 
     # ── 특권 위치 탐색 / 적용 ────────────────────────────────────
 
@@ -254,6 +324,10 @@ class MatrixGame:
         return float(to_cpu(cp.round(cp.linalg.det(m_f))))
 
     def _best_priv_position(self, priv_type, target_idx, minimize=False):
+        """
+        단일 대상에 대한 최적 위치 탐색.
+        priv_type: 0=행교환, 1=열교환, 2=원소0, 3=두원소교환
+        """
         m = self.matrices[target_idx]
         best_effect = None
         best_score  = float('inf') if minimize else -float('inf')
@@ -261,19 +335,23 @@ class MatrixGame:
         def is_better(s):
             return s < best_score if minimize else s > best_score
 
-        if priv_type == 0:
+        if priv_type == 0:  # 행 교환
             for i, j in [(0,1),(0,2),(1,2)]:
-                for axis in ('row','col'):
-                    m_new = m.copy()
-                    if axis == 'row':
-                        tmp = m_new[i].copy(); m_new[i] = m_new[j]; m_new[j] = tmp
-                    else:
-                        tmp = m_new[:,i].copy(); m_new[:,i] = m_new[:,j]; m_new[:,j] = tmp
-                    s = self._eval_matrix(m_new)
-                    if is_better(s):
-                        best_score = s; best_effect = (axis, i, j)
+                m_new = m.copy()
+                tmp = m_new[i].copy(); m_new[i] = m_new[j]; m_new[j] = tmp
+                s = self._eval_matrix(m_new)
+                if is_better(s):
+                    best_score = s; best_effect = (i, j)
 
-        elif priv_type == 1:
+        elif priv_type == 1:  # 열 교환
+            for i, j in [(0,1),(0,2),(1,2)]:
+                m_new = m.copy()
+                tmp = m_new[:,i].copy(); m_new[:,i] = m_new[:,j]; m_new[:,j] = tmp
+                s = self._eval_matrix(m_new)
+                if is_better(s):
+                    best_score = s; best_effect = (i, j)
+
+        elif priv_type == 2:  # 원소 0
             for r in range(3):
                 for c in range(3):
                     if int(to_cpu(m[r, c])) != 0:
@@ -282,7 +360,7 @@ class MatrixGame:
                         if is_better(s):
                             best_score = s; best_effect = (r, c)
 
-        elif priv_type == 2:
+        elif priv_type == 3:  # 두 원소 교환
             pos = [(r, c) for r in range(3) for c in range(3)]
             for k in range(len(pos)):
                 for l in range(k+1, len(pos)):
@@ -302,15 +380,15 @@ class MatrixGame:
         if effect is None:
             return
         m = self.matrices[target_idx]
-        if priv_type == 0:
-            axis, i, j = effect
-            if axis == 'row':
-                tmp = m[i].copy(); m[i] = m[j]; m[j] = tmp
-            else:
-                tmp = m[:,i].copy(); m[:,i] = m[:,j]; m[:,j] = tmp
-        elif priv_type == 1:
+        if priv_type == 0:  # 행 교환
+            i, j = effect
+            tmp = m[i].copy(); m[i] = m[j]; m[j] = tmp
+        elif priv_type == 1:  # 열 교환
+            i, j = effect
+            tmp = m[:,i].copy(); m[:,i] = m[:,j]; m[:,j] = tmp
+        elif priv_type == 2:  # 원소 0
             r, c = effect; m[r, c] = 0
-        elif priv_type == 2:
+        elif priv_type == 3:  # 두 원소 교환
             r1,c1,r2,c2 = effect
             tmp = m[r1,c1].copy(); m[r1,c1] = m[r2,c2]; m[r2,c2] = tmp
 
@@ -464,23 +542,27 @@ class MatrixGame:
                     break
             except ValueError:
                 pass
+
+        print("  적용 범위:")
+        print("  1. 나에게만 (내 행렬 강화)")
+        print("  2. 전체 타팀 (모든 상대 행렬 약화)")
         while True:
             try:
-                target_idx = int(input("대상 팀 번호 (1~6): ")) - 1
-                if 0 <= target_idx < self.num_players:
+                scope = int(input("범위 선택 (1/2): ")) - 1
+                if scope in (0, 1):
                     break
             except ValueError:
                 pass
 
-        minimize = (target_idx != winner_idx)
-        effect   = self._best_priv_position(priv_type, target_idx, minimize)
-        if effect is None:
-            print("  적용 가능한 효과 없음.")
-            return
-        self._apply_priv(priv_type, target_idx, effect)
-        direction = "약화" if minimize else "강화"
-        print(f"  → Team {target_idx+1}에 '{PRIV_NAMES[priv_type]}' ({direction})")
-        print(f"  결과 행렬:\n{to_cpu(self.matrices[target_idx])}")
+        self.apply_privilege(winner_idx, priv_type, scope)
+        if scope == 0:
+            print(f"  → 내 행렬에 '{PRIV_NAMES[priv_type]}' 적용 (강화)")
+            print(f"  결과:\n{to_cpu(self.matrices[winner_idx])}")
+        else:
+            print(f"  → 전체 타팀에 '{PRIV_NAMES[priv_type]}' 적용 (약화)")
+            for t in range(self.num_players):
+                if t != winner_idx:
+                    print(f"  Team {t+1}:\n{to_cpu(self.matrices[t])}")
 
     def play_interactive(self):
         self.reset_game()
@@ -525,9 +607,13 @@ class MatrixGame:
                 print(f"\n라운드 승자: {labels.get(winner, f'Bot(T{winner+1})')}")
                 if winner == 0:
                     _, priv_a = self.agent_learner_privilege(winner, temperature=0.0)
-                    pt, ti = priv_a // 6, priv_a % 6
-                    print(f"[AI 특권] Team {ti+1}에 '{PRIV_NAMES[pt]}' ({'약화' if ti != winner else '강화'})")
-                    print(f"  결과 행렬:\n{to_cpu(self.matrices[ti])}")
+                    pt    = priv_a // 2
+                    scope = priv_a % 2
+                    if scope == 0:
+                        print(f"[AI 특권] 나에게 '{PRIV_NAMES[pt]}' (강화)")
+                        print(f"  결과:\n{to_cpu(self.matrices[winner])}")
+                    else:
+                        print(f"[AI 특권] 전체 타팀에 '{PRIV_NAMES[pt]}' (약화)")
                 elif winner == 1:
                     self._human_choose_privilege(winner)
                 else:
