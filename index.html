@@ -166,8 +166,21 @@
             padding: 0; transition: border-color 0.15s, background 0.15s;
         }
         .matrix-grid input:focus { outline: none; border-color: #007bff; background: #1a2a3a; }
-        .matrix-grid input.ai-last { border-color: #ffd700; background: rgba(255,215,0,.12); }
+        .matrix-grid input.ai-last  { border-color: #ffd700; background: rgba(255,215,0,.12); }
+        .matrix-grid input.cell-used { border-color: #ff8c00 !important; background: rgba(255,140,0,.10) !important; }
         .matrix-grid input:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* ── 대각 성분 마스크 ── */
+        .cell-wrapper { position: relative; aspect-ratio: 1; }
+        .cell-wrapper input { height: 100%; aspect-ratio: unset; }
+        .cell-mask {
+            display: none; position: absolute; inset: 0;
+            background: #1a1a1a; border: 1px solid #444; border-radius: 3px;
+            color: #555; font-size: 1rem; align-items: center; justify-content: center;
+            font-style: italic; letter-spacing: 1px;
+            pointer-events: none; user-select: none;
+        }
+        .cell-mask.visible { display: flex; pointer-events: auto; cursor: not-allowed; }
 
         .det-line {
             font-size: 0.6rem; color: #555; margin-top: 3px; text-align: right;
@@ -234,6 +247,11 @@
             </select>
         </div>
 
+        <div class="mt">
+            <div class="sec">게임 진행</div>
+            <button class="btn-block btn-success" id="btn-reveal" onclick="toggleDiagMasks()">🔓 게임 종료 (대각 공개)</button>
+        </div>
+
         <!-- 배틀 전용 영역 -->
         <div id="battle-area" style="display:none;">
             <div class="mt">
@@ -283,7 +301,10 @@ import {
    상태
 ═══════════════════════════════════════ */
 let currentMode = 'advice';
-const battle = { active: false, playerTurn: false, turnCount: 0, log: [] };
+const battle = {
+    active: false, playerTurn: false, turnCount: 0, log: [],
+    turnStartMatrix: null, usedCells: new Set()
+};
 
 /* ═══════════════════════════════════════
    모드 전환
@@ -359,11 +380,62 @@ function refreshCardStyles() {
 }
 
 /* ═══════════════════════════════════════
+   대각 성분 공개/비공개
+═══════════════════════════════════════ */
+const DIAG = [0, 4, 8];
+
+function syncRevealButton(masksVisible) {
+    const btn = document.getElementById('btn-reveal');
+    if (!btn) return;
+    btn.innerHTML = masksVisible ? '🔓 게임 종료 (대각 공개)' : '🔒 다시 가리기';
+    btn.classList.toggle('btn-success', masksVisible);
+    btn.classList.toggle('btn-secondary', !masksVisible);
+}
+
+function showDiagMasks() {
+    // 플레이어(0) 제외 — 자신의 대각은 본인만 알고 있음
+    for (let t = 1; t < 6; t++) {
+        DIAG.forEach(i => {
+            const el = document.getElementById(`mask-t${t}-c${i}`);
+            if (el) el.classList.add('visible');
+        });
+    }
+    syncRevealButton(true);
+}
+
+function hideDiagMasks() {
+    for (let t = 0; t < 6; t++) {
+        DIAG.forEach(i => {
+            const el = document.getElementById(`mask-t${t}-c${i}`);
+            if (el) el.classList.remove('visible');
+        });
+    }
+    syncRevealButton(false);
+}
+
+window.toggleDiagMasks = function() {
+    const anyVisible = !!document.querySelector('.cell-mask.visible');
+    if (anyVisible) hideDiagMasks();
+    else showDiagMasks();
+};
+
+/* ═══════════════════════════════════════
    AI 대전
 ═══════════════════════════════════════ */
+function beginPlayerTurn() {
+    battle.playerTurn = true;
+    const mats = getMatrices();
+    battle.turnStartMatrix = [...mats[0]];
+    battle.usedCells = new Set();
+    for (let i = 0; i < 9; i++) {
+        const el = document.getElementById(`t0-c${i}`);
+        if (el) { el.disabled = false; el.classList.remove('cell-used'); el.title = ''; }
+    }
+    updateTurnUI();
+}
+
 window.startBattle = function() {
     battle.active = true;
-    battle.playerTurn = true;
     battle.turnCount = 0;
     battle.log = [];
 
@@ -372,12 +444,12 @@ window.startBattle = function() {
 
     // Teams 2~6 입력 잠금 (AI가 자동 조작)
     for (let t = 1; t < 6; t++) setDisabled(t, true);
-    setDisabled(0, false);
 
     document.getElementById('btn-confirm').disabled = false;
     addLog('sys', '새 게임 시작! 수를 두고 "내 수 확정"을 누르세요.');
-    updateTurnUI();
     refreshCardStyles();
+    showDiagMasks();
+    beginPlayerTurn();
     analyze();
 };
 
@@ -399,6 +471,7 @@ window.confirmMove = function() {
         battle.active = false;
         document.getElementById('btn-confirm').disabled = true;
         document.getElementById('turn-display').innerHTML = '';
+        hideDiagMasks();
         analyze();
         return;
     }
@@ -442,11 +515,12 @@ function aiTurn(allMats, round) {
         document.getElementById('btn-confirm').disabled = true;
         document.getElementById('turn-display').innerHTML =
             '<span style="color:#00ffcc;font-size:.8rem;">🏆 플레이어 승리!</span>';
+        hideDiagMasks();
+        updateTurnUI();
     } else {
-        battle.playerTurn = true;
+        beginPlayerTurn();
     }
 
-    updateTurnUI();
     analyze();
 }
 
@@ -489,6 +563,7 @@ window.clearAllInputs = function() {
     for (let t = 0; t < 6; t++) {
         setMatrixUI(t, new Array(9).fill(0));
     }
+    showDiagMasks();
     analyze();
 };
 
@@ -622,11 +697,34 @@ for (let t = 0; t < 6; t++) {
         inp.type = 'number';
         inp.value = 0;
         inp.id = `t${t}-c${i}`;
-        // 핵심 수정: async 함수를 직접 리스너로 쓰지 않고 화살표로 감싸
-        // → 이벤트 리스너가 Promise를 반환하지 않아 메시지 채널 오류 방지
-        inp.addEventListener('input',  () => { analyze(); });
-        inp.addEventListener('focus',  function() { this.select(); });
-        grid.appendChild(inp);
+        inp.addEventListener('input', () => {
+            if (t === 0 && currentMode === 'battle' && battle.active && battle.playerTurn) {
+                const newVal = parseInt(inp.value) || 0;
+                const startVal = battle.turnStartMatrix ? battle.turnStartMatrix[i] : null;
+                if (startVal !== null && newVal !== startVal && !battle.usedCells.has(i)) {
+                    battle.usedCells.add(i);
+                    inp.classList.add('cell-used');
+                    inp.title = '이미 사용한 칸 (턴당 1회)';
+                    inp.disabled = true;
+                }
+            }
+            analyze();
+        });
+        inp.addEventListener('focus', function() { this.select(); });
+
+        if (DIAG.includes(i)) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'cell-wrapper';
+            wrapper.appendChild(inp);
+            const mask = document.createElement('div');
+            mask.className = 'cell-mask';
+            mask.id = `mask-t${t}-c${i}`;
+            mask.textContent = '?';
+            wrapper.appendChild(mask);
+            grid.appendChild(wrapper);
+        } else {
+            grid.appendChild(inp);
+        }
     }
     card.appendChild(grid);
 
@@ -644,6 +742,7 @@ for (let t = 0; t < 6; t++) {
 document.getElementById('round-select').addEventListener('change', () => { analyze(); });
 
 // 페이지 로드: AI 가중치 로드 후 초기 분석
+showDiagMasks();
 loadAIWeights()
     .then(() => { analyze(); })
     .catch(() => { analyze(); });
