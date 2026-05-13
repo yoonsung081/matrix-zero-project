@@ -4,6 +4,39 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Matrix-Zero Strategy Helper v2.1</title>
+    <!-- 브라우저 익스텐션 메시지 채널 오류 억제 -->
+    <script>
+    (function () {
+        var KEYWORDS = ['message channel closed', 'listener indicated an asynchronous', 'asynchronous response'];
+
+        function isSuppressed(msg) {
+            if (!msg) return false;
+            var s = typeof msg === 'string' ? msg : (msg.message || String(msg));
+            return KEYWORDS.some(function (k) { return s.indexOf(k) !== -1; });
+        }
+
+        // Promise rejection (캡처 단계로 최우선 처리)
+        window.addEventListener('unhandledrejection', function (e) {
+            if (isSuppressed(e && e.reason)) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+            }
+        }, true);
+
+        // 동기 오류
+        window.addEventListener('error', function (e) {
+            if (isSuppressed(e && (e.message || (e.error && e.error.message)))) {
+                e.preventDefault();
+                e.stopImmediatePropagation();
+            }
+        }, true);
+
+        // 구형 onerror 폴백
+        window.onerror = function (msg) {
+            return isSuppressed(msg);
+        };
+    })();
+    </script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -454,9 +487,7 @@ window.resetTeam = function(t) {
 
 window.clearAllInputs = function() {
     for (let t = 0; t < 6; t++) {
-        const init = new Array(9).fill(0);
-        if (t === 0) init[0] = 1;
-        setMatrixUI(t, init);
+        setMatrixUI(t, new Array(9).fill(0));
     }
     analyze();
 };
@@ -608,8 +639,6 @@ for (let t = 0; t < 6; t++) {
     container.appendChild(card);
 }
 
-// 초기값: Team 1 (1,1)=1
-document.getElementById('t0-c0').value = 1;
 
 // 이벤트 (화살표로 감싸서 Promise 반환 방지)
 document.getElementById('round-select').addEventListener('change', () => { analyze(); });
