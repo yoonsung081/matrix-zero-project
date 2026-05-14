@@ -19,63 +19,142 @@
     </script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; background: #08080a; color: #eee; font-size: 10px; }
-        .app-container { display: grid; grid-template-columns: 160px 1fr 180px; grid-template-rows: 40px 1fr; height: 100vh; gap: 3px; padding: 3px; }
-        header { grid-column: 1 / -1; background: #16161a; border-radius: 4px; display: flex; align-items: center; padding: 0 10px; gap: 10px; border: 1px solid #333; }
-        .nav-btn { padding: 4px 10px; border-radius: 4px; border: 1px solid #444; color: #888; text-decoration: none; font-weight: bold; font-size: 0.7rem; background: #222; }
-        .nav-btn.active { border-color: #00ffcc; color: #00ffcc; background: #333; }
-        .hud-item { padding: 2px 6px; border-radius: 10px; background: #222; border: 1px solid #444; font-weight: bold; font-size: 0.65rem; }
-        .sidebar { background: #16161a; border-radius: 4px; padding: 6px; display: flex; flex-direction: column; gap: 4px; border: 1px solid #333; }
-        .main-content { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); gap: 3px; height: 100%; min-height: 0; }
-        .analysis-bar { background: #16161a; border-radius: 4px; padding: 6px; display: flex; flex-direction: column; gap: 4px; border: 1px solid #333; }
-        .team-card { background: #1c1c21; border: 1px solid #333; border-radius: 4px; padding: 3px; display: flex; flex-direction: column; justify-content: space-between; position: relative; min-height: 0; }
+        body {
+            width: 100vw; height: 100vh; overflow: hidden;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #09090b; color: #eee; font-size: 10px;
+        }
+        .app-container {
+            display: grid;
+            grid-template-columns: 160px 1fr 180px;
+            grid-template-rows: 32px 1fr;
+            height: 100vh; gap: 4px; padding: 4px;
+        }
+        header {
+            grid-column: 1 / -1; background: #16161a; border-radius: 4px;
+            display: flex; align-items: center; padding: 0 10px; gap: 8px; border: 1px solid #333;
+        }
+        h1 { font-size: 0.8rem; color: #00ffcc; white-space: nowrap; }
+        .hud-item { padding: 2px 6px; border-radius: 10px; background: #222; border: 1px solid #444; font-weight: bold; font-size: 0.6rem; }
+        
+        .sidebar, .analysis-bar { background: #16161a; border-radius: 4px; padding: 5px; display: flex; flex-direction: column; gap: 4px; border: 1px solid #333; overflow: hidden; }
+        .main-content { 
+            display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); 
+            gap: 4px; height: 100%; min-height: 0;
+        }
+
+        .team-card { 
+            background: #1c1c21; border: 1px solid #333; border-radius: 4px; padding: 4px; 
+            display: flex; flex-direction: column; justify-content: space-between; min-height: 0;
+            position: relative;
+        }
         .team-card.is-player { border-color: #00ffcc; background: #111a19; }
-        .team-card.targetable { border-color: #ffd700; cursor: pointer; box-shadow: 0 0 10px rgba(255,215,0,0.4); }
-        .team-name { font-size: 0.65rem; font-weight: bold; color: #555; }
+        .team-card.highlight { animation: flash 0.6s; }
+        @keyframes flash { 50% { border-color: #ffd700; box-shadow: 0 0 10px #ffd700; } }
+
+        .team-name { font-size: 0.6rem; font-weight: bold; color: #555; }
         .is-player .team-name { color: #00ffcc; }
+
         .matrix-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; flex-grow: 1; }
-        .matrix-grid input { width: 100%; height: 100%; text-align: center; background: #000; color: #fff; border: 1px solid #333; border-radius: 1px; font-size: 0.85rem; font-weight: bold; }
+        .matrix-grid input {
+            width: 100%; height: 100%; text-align: center; background: #000; color: #fff;
+            border: 1px solid #333; border-radius: 1px; font-size: 0.85rem; padding: 0; font-weight: bold;
+        }
         .matrix-grid input.cell-used { border-color: #ff8c00 !important; background: rgba(255,140,0,0.15) !important; color: #ff8c00; }
-        .det-box { margin-top: 2px; padding: 2px 4px; background: rgba(0,0,0,0.4); border-radius: 2px; display: flex; justify-content: space-between; font-size: 0.55rem; font-family: monospace; }
-        .btn { width: 100%; padding: 5px; border-radius: 3px; border: none; cursor: pointer; font-weight: bold; font-size: 0.7rem; background:#333; color:#fff; }
-        .log-area { flex-grow: 1; background: #000; padding: 4px; font-size: 0.58rem; overflow-y: auto; border: 1px solid #222; }
-        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 1000; align-items: center; justify-content: center; }
-        .modal { background: #1a1a1d; border: 2px solid #007bff; padding: 12px; border-radius: 8px; width: 280px; }
-        .priv-btn { margin-bottom: 4px; padding: 8px; font-size: 0.7rem; background: #222; color: #fff; border: 1px solid #444; width: 100%; cursor: pointer; }
-        .diag-mask { position: absolute; inset: 0; background: #111; border: 1px solid #222; display: flex; align-items: center; justify-content: center; color: #444; font-size: 1.1rem; pointer-events: none; z-index: 5; }
+        .matrix-grid input.selection-target { border-color: #00ffcc !important; background: rgba(0,255,204,0.3) !important; cursor: pointer; }
+        
+        .det-box {
+            margin-top: 2px; padding: 2px 4px; background: rgba(0,0,0,0.4); border-radius: 2px;
+            display: flex; justify-content: space-between; font-size: 0.6rem; font-family: monospace;
+        }
+        .det-val.zero { color: #ff4444; font-weight: bold; }
+        .ax-val { color: #00ffcc; }
+
+        .btn { width: 100%; padding: 5px; border-radius: 3px; border: none; cursor: pointer; font-weight: bold; font-size: 0.65rem; transition: 0.1s; }
+        .btn-start { background: #28a745; color: white; }
+        .btn-confirm { background: #6f42c1; color: white; }
+        .btn-page { background: #222; border: 1px solid #444; color: #0cf; margin-top: auto; text-decoration: none; text-align: center; }
+
+        .log-area { flex-grow: 1; background: #000; border-radius: 3px; padding: 4px; font-size: 0.6rem; overflow-y: auto; font-family: monospace; border: 1px solid #222; line-height: 1.2; }
+        .log-ai { color: #ff6b6b; } .log-player { color: #00ffcc; } .log-sys { color: #ffd700; }
+
+        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 1000; align-items: center; justify-content: center; }
+        .modal { background: #1a1a1d; border: 2px solid #007bff; padding: 12px; border-radius: 10px; width: 280px; }
+        .priv-btn { margin-bottom: 5px; text-align: left; padding: 8px; font-size: 0.75rem; background: #333; color: #fff; border: 1px solid #444; }
+        
+        .cell-wrapper { position: relative; width: 100%; height: 100%; }
+        .diag-mask { position: absolute; inset: 0; background: #111; border: 1px solid #222; display: none; align-items: center; justify-content: center; color: #444; font-size: 1.2rem; pointer-events: none; z-index: 5; }
         .diag-mask.active { display: flex; }
+
+        .focus-cell { background:#1c1c21; border:2px solid #444; border-radius:6px; display:flex; align-items:center; justify-content:center; font-size:1.6rem; font-weight:bold; color:#eee; cursor:pointer; transition:border-color 0.15s, background 0.15s; user-select:none; }
+        .focus-cell:hover { border-color:#00ffcc; background:#0d2420; }
+        .focus-cell.selected { border-color:#ffd700 !important; background:#2a2000 !important; color:#ffd700; }
+        .focus-handle { background:#1c1c21; border:2px solid #333; border-radius:4px; display:flex; align-items:center; justify-content:center; font-size:0.7rem; font-weight:bold; color:#666; cursor:pointer; transition:border-color 0.15s, color 0.15s; user-select:none; }
+        .focus-handle:hover { border-color:#00ffcc; color:#00ffcc; }
+        .focus-handle.selected { border-color:#ffd700 !important; color:#ffd700 !important; }
     </style>
 </head>
 <body>
-<div class="overlay" id="privilege-ui">
-    <div class="modal">
-        <h2 style="color:#ffd700; margin-bottom:12px; font-size:0.9rem; text-align:center;">🏆 승자 특권 선택</h2>
-        <button class="btn priv-btn" onclick="startManualPriv('SwapRows')">🔄 행 교환</button>
-        <button class="btn priv-btn" onclick="startManualPriv('SwapColumns')">🔄 열 교환</button>
-        <button class="btn priv-btn" onclick="startManualPriv('ZeroCell')">💀 원소 무력화</button>
-        <button class="btn priv-btn" onclick="startManualPriv('SwapCells')">↔️ 위치 교환</button>
+
+<div class="overlay" id="privilege-ui" style="flex-direction: column;">
+    <div class="modal" style="width: 80vw; max-width: 600px; padding: 30px;">
+        <h2 style="color:#ffd700; font-size:1.5rem; text-align:center; margin-bottom:20px;">🏆 라운드 승리! 특권 행사</h2>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 20px;">
+            <button class="btn" style="height: 100px; font-size: 1rem; background: #222;" onclick="selectPriv('swap_rowcol')">🔄<br>행/열 교환</button>
+            <button class="btn" style="height: 100px; font-size: 1rem; background: #222;" onclick="selectPriv('zero')">💀<br>원소 0화</button>
+            <button class="btn" style="height: 100px; font-size: 1rem; background: #222;" onclick="selectPriv('swap_elements')">↔️<br>위치 교환</button>
+        </div>
+
+        <div id="priv-scope-selector" style="display:none; text-align:center; border-top: 1px solid #444; padding-top: 20px;">
+            <p style="margin-bottom:15px; font-size: 1rem;">적용 범위를 선택하세요:</p>
+            <div style="display: flex; gap: 10px; justify-content: center;">
+                <button class="btn" style="padding: 15px 30px; font-size: 1rem; background: #007bff;" onclick="applyPriv('self')">나에게만 (최대화)</button>
+                <button class="btn" style="padding: 15px 30px; font-size: 1rem; background: #dc3545;" onclick="applyPriv('others')">전체 타팀 일괄 (최소화)</button>
+            </div>
+        </div>
     </div>
 </div>
+
+<div class="overlay" id="priv-focus-overlay" style="flex-direction: column; background:rgba(0,0,0,0.96); z-index:2000;">
+    <div style="background:#1e1e24; padding:30px; border-radius:12px; border:2px solid #00ffcc; text-align:center; min-width:340px;">
+        <h2 id="focus-title" style="color:#00ffcc; margin-bottom:8px; font-size:1.3rem;"></h2>
+        <p id="focus-hint" style="color:#aaa; font-size:0.85rem; margin-bottom:20px; min-height:1.2em;"></p>
+        <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
+            <div id="focus-col-handles" style="display:none; gap:4px; padding-left:36px; justify-content:center;"></div>
+            <div style="display:flex; gap:4px; align-items:center;">
+                <div id="focus-row-handles" style="display:none; flex-direction:column; gap:4px;"></div>
+                <div id="focus-matrix" style="display:grid; grid-template-columns:repeat(3,80px); grid-template-rows:repeat(3,80px); gap:4px;"></div>
+            </div>
+        </div>
+        <button class="btn" style="background:#444; margin-top:20px; width:auto; padding:8px 30px;" onclick="exitFocus()">취소</button>
+    </div>
+</div>
+
 <div class="app-container">
     <header>
         <h1>MATRIX SURVIVAL</h1>
-        <a href="index.html" class="nav-btn active">⚔️ 배틀 모드</a>
-        <a href="advice.html" class="nav-btn">📊 조언 모드</a>
-        <div id="hud-round" class="hud-item" style="margin-left:auto;">R1</div>
-        <div id="hud-actions" class="hud-item">남은: 1</div>
+        <div id="hud-round" class="hud-item">R1</div>
+        <div id="hud-x" class="hud-item" style="color:#ffd700">X=[0,0,0]</div>
+        <div id="hud-actions" class="hud-item" style="color:#00ffcc">남은: 1</div>
+        <div id="turn-status" style="margin-left:auto; font-weight:bold; font-size:0.65rem;"></div>
     </header>
+
     <div class="sidebar">
-        <button class="btn" style="background:#28a745;" onclick="startBattle()">🎮 새 게임 시작</button>
-        <button class="btn" id="btn-confirm" onclick="confirmMove()" disabled>✅ 내 수 확정</button>
-        <button class="btn" onclick="clearAllInputs()">🧹 초기화</button>
-        <button class="btn" id="btn-reveal" onclick="toggleDiag()">🔓 대각 공개</button>
-        <div class="log-area" id="log"></div>
+        <button class="btn btn-start" onclick="startBattle()">🎮 게임 시작</button>
+        <button class="btn btn-confirm" id="btn-confirm" onclick="confirmMove()" disabled>✅ 내 수 확정</button>
+        <button class="btn" style="background:#333; color:#888;" onclick="clearAllInputs()">🧹 초기화</button>
+        <button class="btn" id="btn-reveal" style="background:#222; color:#555;" onclick="toggleDiag()">🔓 대각 공개</button>
+        <div class="log-area" id="log">대전 대기 중...</div>
+        <button class="btn" style="background:#222; border:1px solid #444; color:#555; margin-top: auto; cursor: default;">📊 조언 모드 (비활성)</button>
     </div>
+
     <div class="main-content" id="matrix-container"></div>
     <div class="analysis-bar" id="ranking-content"></div>
 </div>
+
 <script>
-    const state = { active: false, playerTurn: false, round: 1, actions: 1, used: new Set(), privMode: null, privTarget: null, privSelections: [] };
+    const state = { active: false, playerTurn: false, round: 1, actions: 1, used: new Set(), privMode: null, privTarget: null, privSelections: [], pendingTeams: [], privTotalTeams: 0 };
     const DIAG = [0, 4, 8];
 
     function calculateDet(m) { return m[0]*(m[4]*m[8]-m[5]*m[7]) - m[1]*(m[3]*m[8]-m[5]*m[6]) + m[2]*(m[3]*m[7]-m[4]*m[6]); }
@@ -98,14 +177,15 @@
         document.getElementById('hud-x').textContent = `X=[${x.join(',')}]`;
         mats.forEach((m, t) => {
             const d = calculateDet(m), ax = axSum(m, x);
-            document.getElementById(`det-${t}`).innerHTML = `<span>det: <b class="${d===0?'zero':''}">${d}</b></span><span>Ax: <b class="ax-val">${ax.toFixed(1)}</b></span>`;
+            document.getElementById(`det-${t}`).innerHTML = `<span>det: <b class="det-val ${d===0?'zero':''}">${d}</b></span><span>Ax: <b class="ax-val">${ax.toFixed(1)}</b></span>`;
         });
         const ranking = mats.map((m,i)=>({i, s: state.round<=2?axSum(m,x):calculateDet(m)})).sort((a,b)=>b.s-a.s);
-        let h = `<div style="font-size:0.6rem; color:#444;">RANKING</div>`;
+        let h = `<div style="font-size:0.6rem; color:#444; margin-bottom:4px;">RANKING</div>`;
         ranking.forEach((r, rank) => { h += `<div style="display:flex; justify-content:space-between; padding:2px 0; border-bottom:1px solid #222; ${r.i===0?'color:#0cf; font-weight:bold;':''}"><span>${rank+1}위 T${r.i+1}</span><span>${r.s.toFixed(1)}</span></div>`; });
         document.getElementById('ranking-content').innerHTML = h;
 
-        if(state.actions === 0 && state.playerTurn && !state.privMode) {
+        // 행동 잠금 강화
+        if(state.playerTurn && state.actions === 0) {
             for(let i=0; i<9; i++) document.getElementById(`t0-c${i}`).disabled = true;
         }
     }
@@ -119,7 +199,7 @@
                 inp.value = 0; inp.disabled = (t > 0); inp.classList.remove('cell-used');
             }
         }
-        beginTurn();
+        beginTurn(); addLog('sys', '배틀 시작!');
     }
 
     function beginTurn() {
@@ -129,91 +209,247 @@
             inp.disabled = false; inp.classList.remove('cell-used');
         }
         updateHUD();
+        document.getElementById('turn-status').innerHTML = '<span style="color:#00ffcc">PLAYER</span>';
     }
 
     async function confirmMove() {
         if(state.actions > 0) return alert('행동을 다 쓰세요.');
         state.playerTurn = false;
-        document.getElementById('log').innerHTML = '';
+        document.getElementById('turn-status').innerHTML = '<span style="color:#ff6b6b">AI TURN</span>';
+        addLog('player', `R${state.round} 수 확정.`);
+        let processed = 0;
         for(let t=1; t<=5; t++) {
-            await new Promise(r=>setTimeout(r,300));
-            let all = getMatrices(), myM = [...all[t]], usedIdx = new Set();
-            for(let a=0; a<state.round; a++) {
-                let best = {idx:0, d:1, s:-1e9};
-                for(let i=0; i<9; i++) {
-                    if(usedIdx.has(i)) continue;
-                    for(let d of [-1, 1]) {
-                        let n = [...myM]; n[i]+=d;
-                        let s = state.round <= 2 ? (n[0]+n[4]+n[8]) : calculateDet(n);
-                        if(s > best.s) best = {idx:i, d, s:score=s};
+            setTimeout(() => {
+                let all = getMatrices(), myM = [...all[t]], usedIdx = new Set();
+                for(let a=0; a<state.round; a++) {
+                    let best = {idx:0, d:1, s:-1e9};
+                    for(let i=0; i<9; i++) {
+                        if(usedIdx.has(i)) continue;
+                        for(let d of [-1, 1]) {
+                            let n = [...myM]; n[i]+=d;
+                            let score = state.round <= 2 ? (n[0]+n[4]+n[8]) : calculateDet(n);
+                            if(score > best.s) best = {idx:i, d, s:score};
+                        }
                     }
+                    myM[best.idx] += best.d; usedIdx.add(best.idx);
                 }
-                if(best.idx!==-1){ myM[best.idx]+=best.d; usedIdx.add(best.idx); }
+                const card = document.querySelector(`.team-card[data-team="${t}"]`);
+                card.classList.add('highlight'); setTimeout(()=>card.classList.remove('highlight'), 500);
+                for(let i=0; i<9; i++) document.getElementById(`t${t}-c${i}`).value = myM[i];
+                updateHUD();
+                if(++processed === 5) checkRoundEnd();
+            }, t * 150);
+        }
+    }
+
+    function checkRoundEnd() {
+        const mats = getMatrices(), x = calculateX(mats);
+        const scores = mats.map(m => state.round <= 2 ? axSum(m, x) : calculateDet(m));
+        const sorted = scores.map((s,i)=>({s,i})).sort((a,b)=>b.s-a.s);
+        let winIdx = (sorted[0].s > sorted[1].s) ? sorted[0].i : -1;
+        if(winIdx === -1) {
+            const p2 = sorted.filter(v=>v.s < sorted[0].s);
+            if(p2.length > 0 && (p2.length === 1 || p2[0].s > p2[1].s)) winIdx = p2[0].i;
+        }
+        if(winIdx !== -1) {
+            addLog('sys', `라운드 승자: T${winIdx+1}`);
+            if(winIdx === 0) document.getElementById('privilege-ui').style.display='flex';
+            else { addLog('ai', 'AI 특권 발동.'); setTimeout(nextRound, 1000); }
+        } else { addLog('sys', '공동 승자.'); nextRound(); }
+    }
+
+    // Privilege Logic
+    function selectPriv(mode) {
+        state.privMode = mode;
+        document.getElementById('priv-scope-selector').style.display = 'block';
+    }
+
+    function applyPriv(scope) {
+        document.getElementById('priv-scope-selector').style.display = 'none';
+        document.getElementById('privilege-ui').style.display = 'none';
+        if (scope === 'others') {
+            state.pendingTeams = [1, 2, 3, 4, 5];
+            state.privTotalTeams = 5;
+        } else {
+            state.pendingTeams = [];
+            state.privTotalTeams = 0;
+        }
+        advancePriv();
+    }
+
+    function advancePriv() {
+        if(state.pendingTeams.length === 0) {
+            const mode = state.privMode;
+            state.privMode = null; state.privTarget = null; state.privTotalTeams = 0;
+            addLog('sys', `특권(${mode}) 완료.`);
+            setTimeout(nextRound, 400);
+        } else {
+            const tIdx = state.pendingTeams.shift();
+            enterFocus(tIdx, state.privMode);
+        }
+    }
+
+    function enterFocus(tIdx, mode) {
+        state.privTarget = tIdx;
+        state.privSelections = [];
+        const m = getMatrices()[tIdx];
+        const titles = {zero:'원소 0화', swap_elements:'위치 교환', swap_rowcol:'행/열 교환'};
+        const hints  = {zero:'0으로 만들 원소를 클릭하세요.', swap_elements:'교환할 첫 번째 원소를 클릭하세요.', swap_rowcol:'교환할 행(R) 또는 열(C) 버튼을 두 개 클릭하세요.'};
+        const teamLabel = tIdx === 0 ? '내 팀' : `TEAM ${tIdx+1}`;
+        const done = state.privTotalTeams - state.pendingTeams.length;
+        const progressText = state.privTotalTeams > 0 ? ` (${done}/${state.privTotalTeams})` : '';
+        document.getElementById('focus-title').textContent = `${titles[mode]} — ${teamLabel}${progressText}`;
+        document.getElementById('focus-hint').textContent  = hints[mode];
+
+        const matEl = document.getElementById('focus-matrix');
+        matEl.innerHTML = '';
+        for(let i=0; i<9; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'focus-cell';
+            cell.textContent = m[i];
+            cell.dataset.idx = i;
+            if(mode !== 'swap_rowcol') cell.onclick = () => handleFocusCell(i);
+            matEl.appendChild(cell);
+        }
+
+        const rowEl = document.getElementById('focus-row-handles');
+        const colEl = document.getElementById('focus-col-handles');
+        if(mode === 'swap_rowcol') {
+            rowEl.style.display = 'flex'; colEl.style.display = 'flex';
+            rowEl.innerHTML = ''; colEl.innerHTML = '';
+            for(let r=0; r<3; r++) {
+                const btn = document.createElement('div');
+                btn.className = 'focus-handle'; btn.style.cssText = 'width:28px; height:80px;';
+                btn.textContent = `R${r+1}`; btn.dataset.type='r'; btn.dataset.idx=r;
+                btn.onclick = () => handleFocusHandle('r', r);
+                rowEl.appendChild(btn);
             }
-            for(let i=0; i<9; i++) document.getElementById(`t${t}-c${i}`).value = myM[i];
-            syncMatrices();
+            for(let c=0; c<3; c++) {
+                const btn = document.createElement('div');
+                btn.className = 'focus-handle'; btn.style.cssText = 'width:80px; height:28px;';
+                btn.textContent = `C${c+1}`; btn.dataset.type='c'; btn.dataset.idx=c;
+                btn.onclick = () => handleFocusHandle('c', c);
+                colEl.appendChild(btn);
+            }
+        } else {
+            rowEl.style.display = 'none'; colEl.style.display = 'none';
         }
-        check();
+        document.getElementById('priv-focus-overlay').style.display = 'flex';
     }
 
-    function syncMatrices() { updateHUD(); }
-    
-    function check() {
-        const mats=getMatrices(), x=calculateX(mats), r=state.round;
-        const sc=mats.map(m=>r<=2?axSum(m,x):calculateDet(m)).map((s,i)=>({s,i})).sort((a,b)=>b.s-a.s);
-        let win=-1;
-        if(sc[0].s>sc[1].s) win=sc[0].i;
-        else { const p2=sc.filter(v=>v.s<sc[0].s); if(p2.length>0&&(p2.length===1||p2[0].s>p2[1].s)) win=p2[0].i; }
-        
-        if(win!==-1){
-            if(win===0) document.getElementById('privilege-ui').style.display='flex';
-            else { autoPriv(win); setTimeout(nxtR, 1200); }
-        } else { nxtR(); }
+    function commitFocusAction(tIdx, m) {
+        for(let i=0; i<9; i++) document.getElementById(`t${tIdx}-c${i}`).value = m[i];
+        updateHUD();
+        document.getElementById('priv-focus-overlay').style.display = 'none';
+        state.privSelections = [];
+        advancePriv();
     }
 
-    function startPrivilegeFlow(m) {
-        state.privMode=m; state.privSelections=[]; document.getElementById('privilege-ui').style.display='none';
-        document.querySelectorAll('.team-card').forEach(c=>c.classList.add('targetable'));
-    }
-
-    function applyManualPriv(tIdx, selections) {
-        const mats=getMatrices(); let m=[...mats[tIdx]];
-        if(state.privMode==='ZeroCell') m[selections[0]]=0;
-        else if(state.privMode==='SwapCells'){ let t=m[selections[0]]; m[selections[0]]=m[selections[1]]; m[selections[1]]=t; }
-        // etc
-        for(let i=0;i<9;i++) document.getElementById(`t${tIdx}-c${i}`).value=m[i];
-        state.privMode=null; document.querySelectorAll('.targetable').forEach(c=>c.classList.remove('targetable'));
-        syncMatrices(); setTimeout(nxtR, 800);
-    }
-
-    function autoPriv(win){
-        let target=0, ms=getMatrices();
-        let m=[...ms[target]]; m[0]=0;
-        for(let i=0;i<9;i++) document.getElementById(`t${target}-c${i}`).value=m[i];
-        syncMatrices();
-    }
-
-    function nxtR(){
-        if(state.round<5){ state.round++; beginTurn(); }
-        else { alert("게임 종료"); state.active=false; }
-    }
-
-    function clearAllInputs() { document.querySelectorAll('input').forEach(i=>{i.value=0;i.disabled=false;i.classList.remove('cell-used');}); state.used.clear(); updateHUD(); }
-    function toggleDiag() { const ms=document.querySelectorAll('.diag-mask'); const act=ms[0].classList.contains('active'); ms.forEach(m=>m.classList.toggle('active', !act)); document.getElementById('btn-reveal').textContent=act?'🔓 대각 공개':'🔒 대각 숨김'; }
-
-    const cont = document.getElementById('matrix-container');
-    for(let t=0;t<6;t++){
-        const c=document.createElement('div'); c.className=`team-card ${t===0?'is-player':''}`;
-        c.innerHTML=`<div class="team-card-header"><span class="team-name">TEAM ${t+1}</span></div><div class="matrix-grid"></div><div class="det-box" id="det-${t}"></div>`;
-        const g=c.querySelector('.matrix-grid');
-        for(let i=0;i<9;i++){
-            const w=document.createElement('div'); w.className='cell-wrapper';
-            const n=document.createElement('input'); n.type='number'; n.id=`t${t}-c${i}`; n.value=0;
-            n.oninput=updateHUD; w.appendChild(n);
-            if(t>0 && DIAG.includes(i)){ const m=document.createElement('div'); m.className='diag-mask active'; m.textContent='?'; w.appendChild(m); }
-            g.appendChild(w);
+    function handleFocusCell(idx) {
+        const cells = document.getElementById('focus-matrix').children;
+        if(state.privMode === 'zero') {
+            const m = [...getMatrices()[state.privTarget]];
+            m[idx] = 0;
+            commitFocusAction(state.privTarget, m);
+        } else if(state.privMode === 'swap_elements') {
+            state.privSelections.push(idx);
+            cells[idx].classList.add('selected');
+            if(state.privSelections.length === 2) {
+                const m = [...getMatrices()[state.privTarget]];
+                const [a, b] = state.privSelections;
+                let tmp=m[a]; m[a]=m[b]; m[b]=tmp;
+                commitFocusAction(state.privTarget, m);
+            } else {
+                document.getElementById('focus-hint').textContent = '교환할 두 번째 원소를 클릭하세요.';
+            }
         }
-        cont.appendChild(c);
+    }
+
+    function handleFocusHandle(type, idx) {
+        state.privSelections.push({type, idx});
+        const allHandles = [...document.getElementById('focus-row-handles').children,
+                           ...document.getElementById('focus-col-handles').children];
+        allHandles.forEach(el => { if(el.dataset.type===type && +el.dataset.idx===idx) el.classList.add('selected'); });
+
+        if(state.privSelections.length === 1) {
+            document.getElementById('focus-hint').textContent = `같은 ${type==='r'?'행':'열'}을 하나 더 선택하세요.`;
+        } else {
+            const [s1, s2] = state.privSelections;
+            if(s1.type !== s2.type) {
+                document.getElementById('focus-hint').textContent = '행끼리 또는 열끼리만 교환 가능합니다. 다시 선택하세요.';
+                state.privSelections = [];
+                allHandles.forEach(el => el.classList.remove('selected'));
+                return;
+            }
+            const m = [...getMatrices()[state.privTarget]];
+            if(s1.type === 'r') { for(let c=0;c<3;c++){let t=m[s1.idx*3+c];m[s1.idx*3+c]=m[s2.idx*3+c];m[s2.idx*3+c]=t;} }
+            else { for(let r=0;r<3;r++){let t=m[r*3+s1.idx];m[r*3+s1.idx]=m[r*3+s2.idx];m[r*3+s2.idx]=t;} }
+            commitFocusAction(state.privTarget, m);
+        }
+    }
+
+    function exitFocus() {
+        document.getElementById('priv-focus-overlay').style.display = 'none';
+        state.privSelections = []; state.privMode = null; state.privTarget = null;
+        state.pendingTeams = []; state.privTotalTeams = 0;
+    }
+
+    function nextRound() {
+        if(state.round < 5) { state.round++; beginTurn(); }
+        else {
+            const winner = getFinalWinner(getMatrices());
+            alert(winner.winner!==-1 ? `최종 우승: T${winner.winner+1}` : "전원 탈락!");
+            state.active = false;
+        }
+    }
+
+    function getFinalWinner(mats) {
+        const x = calculateX(mats);
+        const survivors = mats.map((m,i)=>({i, d:calculateDet(m), ax:axSum(m,x)})).filter(p=>p.d!==0);
+        if(survivors.length === 0) return {winner:-1};
+        survivors.sort((a,b)=>b.ax-a.ax || Math.abs(b.d)-Math.abs(a.d));
+        return {winner: survivors[0].i};
+    }
+
+    function addLog(type, msg) {
+        const el = document.getElementById('log'), d = document.createElement('div');
+        d.className = `log-${type}`; d.textContent = `> ${msg}`; el.prepend(d);
+    }
+
+    function clearAllInputs() {
+        document.querySelectorAll('.matrix-grid input').forEach(inp => { inp.value=0; inp.disabled=false; inp.classList.remove('cell-used'); });
+        state.used.clear(); updateHUD();
+    }
+
+    function toggleDiag() {
+        const masks = document.querySelectorAll('.diag-mask');
+        const currentlyMasked = masks[0].classList.contains('active');
+        masks.forEach(m => m.classList.toggle('active', !currentlyMasked));
+        document.getElementById('btn-reveal').innerHTML = !currentlyMasked ? '🔒 대각 숨김' : '🔓 대각 공개';
+    }
+
+    const container = document.getElementById('matrix-container');
+    for(let t=0; t<6; t++) {
+        const card = document.createElement('div'); card.className = `team-card ${t===0?'is-player':''}`; card.dataset.team = t;
+        card.innerHTML = `<div class="team-card-header"><span class="team-name">TEAM ${t+1}</span></div><div class="matrix-grid"></div><div class="det-box" id="det-${t}"></div>`;
+        const grid = card.querySelector('.matrix-grid');
+        for(let i=0; i<9; i++) {
+            const wrap = document.createElement('div'); wrap.className = 'cell-wrapper';
+            const inp = document.createElement('input'); inp.type = 'number'; inp.id = `t${t}-c${i}`; inp.value = 0;
+            inp.addEventListener('input', () => {
+                if(t===0 && state.playerTurn && state.actions > 0 && !state.used.has(i)) {
+                    state.actions--; state.used.add(i); inp.classList.add('cell-used'); inp.disabled = true; updateHUD();
+                } else if(t===0 && !state.active) updateHUD();
+            });
+            inp.addEventListener('focus', function() { this.select(); });
+            wrap.appendChild(inp);
+            if(t>0 && DIAG.includes(i)) {
+                const mask = document.createElement('div'); mask.className = 'diag-mask active'; mask.id = `mask-t${t}-c${i}`; mask.textContent = '?';
+                wrap.appendChild(mask);
+            }
+            grid.appendChild(wrap);
+        }
+        container.appendChild(card);
     }
     updateHUD();
 </script>

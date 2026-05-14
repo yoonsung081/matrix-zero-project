@@ -115,19 +115,22 @@ class MatrixGame:
         for i in range(self.num_players):
             det = self.get_score(i, mode="det")
             if det != 0:
-                # 동점 시 det(A) 값 자체로 비교 (절댓값 아님)
                 survivors.append((self.get_score(i, mode="ax"), det, i))
         if not survivors:
-            return None
-        return sorted(survivors, key=lambda x: (x[0], x[1]), reverse=True)[0][2]
+            return []
+        best_ax = max(s[0] for s in survivors)
+        top_ax = [s for s in survivors if s[0] == best_ax]
+        if len(top_ax) == 1:
+            return [top_ax[0][2]]
+        best_det = max(s[1] for s in top_ax)
+        return [s[2] for s in top_ax if s[1] == best_det]
 
     def get_reward(self, player_idx):
         if self.current_round == 5:
             det = self.get_score(player_idx, mode="det")
             if det == 0:
                 return -1000.0
-            is_winner = (self.get_final_winner() == player_idx)
-            return 5000.0 if is_winner else 0.0
+            return 5000.0 if player_idx in self.get_final_winner() else 0.0
         return 100.0 if self.get_round_winner() == player_idx else 0.0
 
     def reset_game(self):
@@ -622,19 +625,22 @@ class MatrixGame:
 
         print("\n" + "="*50)
         print(" [최종 결과]")
-        winner_idx = self.get_final_winner()
+        winners = self.get_final_winner()
         for i in range(self.num_players):
             label  = "AI(T1)" if i == 0 else "YOU(T2)" if i == 1 else f"Bot(T{i+1})"
             det    = self.get_score(i, mode="det")
             ax_sum = self.get_score(i, mode="ax")
-            status = "WINNER" if i == winner_idx else "SURVIVED" if det != 0 else "ELIMINATED"
+            status = "WINNER" if i in winners else "SURVIVED" if det != 0 else "ELIMINATED"
             print(f" {label}: Ax={ax_sum:.1f}  det={det}  [{status}]")
         print("="*50)
-        if winner_idx is None:
-            print(" 결과: 전원 탈락")
+        labels = {0: "AI (Team 1)", 1: "YOU (Team 2)"}
+        if not winners:
+            print(" 결과: 전원 탈락 (역행렬 존재 조 없음)")
+        elif len(winners) > 1:
+            names = [labels.get(w, f'Bot (Team {w+1})') for w in winners]
+            print(f" 공동 우승: {', '.join(names)}")
         else:
-            labels = {0: "AI (Team 1)", 1: "YOU (Team 2)"}
-            print(f" 최종 승자: {labels.get(winner_idx, f'Bot (Team {winner_idx+1})')}")
+            print(f" 최종 승자: {labels.get(winners[0], f'Bot (Team {winners[0]+1})')}")
 
 
 if __name__ == "__main__":

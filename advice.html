@@ -7,102 +7,317 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; background: #09090b; color: #eee; font-size: 10px; }
-        .app-container { display: grid; grid-template-columns: 180px 1fr 180px; grid-template-rows: 40px 1fr; height: 100vh; gap: 4px; padding: 4px; }
-        header { grid-column: 1 / -1; background: #16161a; display: flex; align-items: center; padding: 0 10px; gap: 10px; border: 1px solid #333; border-radius: 4px; }
-        .sidebar { background: #16161a; border-radius: 4px; padding: 8px; display: flex; flex-direction: column; gap: 5px; border: 1px solid #333; overflow-y: auto; }
-        .main-content { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); gap: 4px; height: 100%; min-width: 0; }
-        .team-card { background: #1c1c21; border: 1px solid #333; border-radius: 4px; padding: 4px; display: flex; flex-direction: column; justify-content: space-between; }
-        .team-card.is-focus { border-color: #0cf; background: #111a19; }
+
+        .app-container {
+            display: grid;
+            grid-template-columns: 148px 1fr 192px;
+            grid-template-rows: 46px 1fr;
+            height: 100vh; gap: 4px; padding: 4px;
+        }
+        header {
+            grid-column: 1 / -1; background: #16161a; display: flex; align-items: center;
+            padding: 0 12px; gap: 10px; border: 1px solid #333; border-radius: 4px;
+        }
+        h1 { font-size: 0.8rem; color: #00ffcc; white-space: nowrap; }
+        .hd-sep { width: 1px; height: 22px; background: #333; flex-shrink: 0; }
+
+        .sidebar { background: #16161a; border-radius: 4px; padding: 6px; display: flex; flex-direction: column; gap: 5px; border: 1px solid #333; overflow: hidden; }
+        .rec-panel { background: #16161a; border-radius: 4px; padding: 6px; display: flex; flex-direction: column; gap: 4px; border: 1px solid #333; overflow: hidden; }
+
+        .main-content { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); gap: 4px; min-height: 0; }
+        .team-card { background: #1c1c21; border: 1px solid #333; border-radius: 4px; padding: 4px; display: flex; flex-direction: column; min-height: 0; cursor: pointer; transition: border-color 0.12s; }
+        .team-card:hover { border-color: #555; }
+        .team-card.is-focus { border-color: #00ffcc; background: #0a1a18; }
+
+        .team-name { font-size: 0.58rem; font-weight: bold; color: #555; margin-bottom: 2px; }
+        .is-focus .team-name { color: #00ffcc; }
         .matrix-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; flex-grow: 1; }
-        .matrix-grid input { width: 100%; height: 100%; text-align: center; background: #000; color: #fff; border: 1px solid #222; font-size: 0.85rem; font-weight: bold; }
-        .btn { width: 100%; padding: 6px; border-radius: 3px; border: none; cursor: pointer; font-weight: bold; font-size: 0.65rem; background:#333; color:#fff; }
-        .rec-item { background: #1a1a1d; border-left: 3px solid #0cf; padding: 5px; margin-bottom: 5px; font-size: 0.65rem; cursor: pointer; }
-        select, input { width: 100%; background: #222; color: #eee; border: 1px solid #444; padding: 3px; font-size: 0.65rem; border-radius: 3px; }
-        .diag-mask { position: absolute; inset: 0; background: #111; display: flex; align-items: center; justify-content: center; color: #ff8c00; font-weight:bold; pointer-events: none; }
+        .matrix-grid input { width: 100%; height: 100%; text-align: center; background: #000; color: #fff; border: 1px solid #222; font-size: 0.85rem; font-weight: bold; outline: none; }
+        .matrix-grid input:focus { border-color: #00ffcc; background: #0a1a18; }
+        .det-box { font-size: 0.55rem; font-family: monospace; margin-top: 2px; display: flex; justify-content: space-between; color: #555; }
+
+        .sec-label { font-size: 0.52rem; color: #555; font-weight: bold; letter-spacing: 0.06em; text-transform: uppercase; }
+
+        /* Team count stepper */
+        .stepper { display: flex; align-items: center; gap: 3px; }
+        .step-btn { width: 22px; height: 22px; background: #222; border: 1px solid #444; color: #eee; border-radius: 3px; cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center; flex-shrink: 0; user-select: none; }
+        .step-btn:hover { background: #00ffcc; color: #000; border-color: #00ffcc; }
+        .step-val { flex: 1; text-align: center; font-weight: bold; font-size: 0.9rem; color: #fff; }
+
+        /* Round toggle */
+        .round-btns { display: flex; gap: 3px; }
+        .round-btn { width: 28px; height: 28px; background: #222; border: 1px solid #444; color: #666; border-radius: 4px; cursor: pointer; font-size: 0.75rem; font-weight: bold; display: flex; align-items: center; justify-content: center; user-select: none; }
+        .round-btn:hover { color: #eee; border-color: #666; }
+        .round-btn.active { background: #00ffcc; border-color: #00ffcc; color: #000; }
+
+        /* Team pills */
+        .team-pills { display: flex; flex-wrap: wrap; gap: 3px; }
+        .team-pill { padding: 3px 7px; background: #222; border: 1px solid #444; color: #666; border-radius: 10px; cursor: pointer; font-size: 0.6rem; font-weight: bold; user-select: none; transition: 0.1s; }
+        .team-pill:hover { border-color: #888; color: #ccc; }
+        .team-pill.active { background: #00ffcc; border-color: #00ffcc; color: #000; }
+
+        /* X inputs in header */
+        .x-group { display: flex; align-items: center; gap: 5px; background: #111; border: 1px solid #2a2a2a; border-radius: 5px; padding: 4px 8px; }
+        .x-group-label { font-size: 0.65rem; color: #888; font-weight: bold; white-space: nowrap; }
+        .x-inp { width: 44px; padding: 3px 4px; background: #000; border: 1px solid #333; color: #ffd700; font-size: 0.8rem; font-weight: bold; text-align: center; border-radius: 3px; }
+        .x-inp:focus { border-color: #ffd700; outline: none; background: #0d0d00; }
+        .x-inp::placeholder { color: #444; font-size: 0.65rem; font-weight: normal; }
+        .x-auto-hint { font-size: 0.55rem; color: #444; white-space: nowrap; }
+
+        /* Recommendations */
+        .rec-header { display: flex; justify-content: space-between; align-items: center; }
+        .rec-title { font-size: 0.6rem; color: #555; font-weight: bold; text-transform: uppercase; letter-spacing: 0.05em; }
+        .rec-target { font-size: 0.65rem; font-weight: bold; color: #00ffcc; }
+        .rec-list { display: flex; flex-direction: column; gap: 3px; flex: 1; overflow: hidden; }
+        .rec-item {
+            background: #1a1a20; border-left: 3px solid #333; padding: 4px 6px; border-radius: 0 4px 4px 0;
+            display: flex; flex-direction: column; gap: 3px; cursor: default;
+        }
+        .rec-item.top { border-left-color: #00ffcc; }
+        .rec-item-row { display: flex; align-items: center; gap: 4px; }
+        .rec-rank { font-size: 0.5rem; color: #444; width: 14px; flex-shrink: 0; }
+        .rec-score { font-size: 0.65rem; font-weight: bold; color: #ffd700; flex: 1; text-align: right; }
+        .rec-apply {
+            font-size: 0.55rem; padding: 2px 7px; background: #2a2a30; border: 1px solid #444;
+            color: #888; border-radius: 3px; cursor: pointer; flex-shrink: 0; white-space: nowrap;
+        }
+        .rec-apply:hover { background: #00ffcc; border-color: #00ffcc; color: #000; }
+        .mv-tags { display: flex; flex-wrap: wrap; gap: 2px; }
+        .mv-tag { font-size: 0.58rem; font-weight: bold; font-family: monospace; padding: 1px 4px; border-radius: 3px; }
+        .mv-tag.plus { background: rgba(0,255,204,0.12); color: #00ffcc; border: 1px solid rgba(0,255,204,0.25); }
+        .mv-tag.minus { background: rgba(255,107,107,0.12); color: #ff6b6b; border: 1px solid rgba(255,107,107,0.25); }
+
+        .btn { width: 100%; padding: 5px; border-radius: 3px; border: none; cursor: pointer; font-weight: bold; font-size: 0.65rem; background: #2a2a30; color: #eee; }
+        .btn:hover { opacity: 0.85; }
+
+        .diag-mask { position: absolute; inset: 0; background: rgba(10,10,12,0.88); display: flex; align-items: center; justify-content: center; color: #555; font-size: 1rem; pointer-events: none; }
     </style>
 </head>
 <body>
 <div class="app-container">
     <header>
-        <h1 style="color:#00ffcc; font-size:0.8rem;">STRATEGY ASSISTANT</h1>
-        <div style="display:flex; align-items:center; gap:5px; margin-left:auto;">
-            <span style="font-size:0.6rem;">Manual X:</span>
-            <input type="number" id="mx0" style="width:30px" oninput="updateHUD()">
-            <input type="number" id="mx1" style="width:30px" oninput="updateHUD()">
-            <input type="number" id="mx2" style="width:30px" oninput="updateHUD()">
+        <h1>STRATEGY ASSISTANT</h1>
+        <div class="hd-sep"></div>
+        <div class="x-group">
+            <span class="x-group-label">X =</span>
+            <input type="number" id="mx0" class="x-inp" placeholder="auto" oninput="updateHUD()">
+            <input type="number" id="mx1" class="x-inp" placeholder="auto" oninput="updateHUD()">
+            <input type="number" id="mx2" class="x-inp" placeholder="auto" oninput="updateHUD()">
+            <span class="x-auto-hint">비우면 자동</span>
+        </div>
+        <div class="hd-sep" style="margin-left:auto;"></div>
+        <span style="font-size:0.65rem; color:#666; flex-shrink:0; font-weight:bold;">라운드</span>
+        <div class="round-btns">
+            <div class="round-btn active" onclick="setRound(1)">1</div>
+            <div class="round-btn" onclick="setRound(2)">2</div>
+            <div class="round-btn" onclick="setRound(3)">3</div>
+            <div class="round-btn" onclick="setRound(4)">4</div>
+            <div class="round-btn" onclick="setRound(5)">5</div>
         </div>
     </header>
+
     <div class="sidebar">
-        <label style="font-size:0.6rem;">활성 팀 수 (1-6)</label>
-        <input type="number" id="team-count" value="6" min="1" max="6" onchange="initTeams()">
-        <label style="font-size:0.6rem; margin-top:5px;">라운드 (N개)</label>
-        <select id="round-select" onchange="updateHUD()">
-            <option value="1">1개 추천</option><option value="2">2개 세트</option>
-            <option value="3">3개 세트</option><option value="4">4개 세트</option><option value="5">5개 세트</option>
-        </select>
-        <label style="font-size:0.6rem; margin-top:5px;">조언 대상</label>
-        <select id="focus-team" onchange="setFocus()"></select>
-        <button class="btn" onclick="clearAll()">🧹 초기화</button>
-        <div id="recommendations" style="flex-grow:1; overflow-y:auto; margin-top:5px;"></div>
-        <a href="index.html" class="btn" style="background:#222; color:#ff6b6b; text-decoration:none; text-align:center;">⚔️ 배틀 모드</a>
+        <div class="sec-label">활성 팀</div>
+        <div class="stepper">
+            <div class="step-btn" onclick="changeTeamCount(-1)">−</div>
+            <div class="step-val" id="team-count-val">6</div>
+            <div class="step-btn" onclick="changeTeamCount(1)">+</div>
+        </div>
+
+        <div class="sec-label" style="margin-top:3px;">조언 대상</div>
+        <div class="team-pills" id="team-pills"></div>
+
+        <div style="margin-top:auto; display:flex; flex-direction:column; gap:3px;">
+            <button class="btn" onclick="clearAll()">🧹 초기화</button>
+            <a href="index.html" class="btn" style="background:#1a0f0f; border:1px solid #3a1a1a; color:#ff6b6b; text-decoration:none; text-align:center;">⚔️ 배틀 모드</a>
+        </div>
     </div>
+
     <div class="main-content" id="matrix-container"></div>
+
+    <div class="rec-panel">
+        <div class="rec-header">
+            <span class="rec-title">추천 수</span>
+            <span class="rec-target" id="rec-target-label">T1</span>
+        </div>
+        <div class="rec-list" id="recommendations"></div>
+    </div>
 </div>
+
 <script>
-    let focusIdx = 0, weights = null, activeTeams = 6;
+    let focusIdx = 0, activeTeams = 6, currentRound = 1;
+
     function calculateDet(m) { return m[0]*(m[4]*m[8]-m[5]*m[7]) - m[1]*(m[3]*m[8]-m[5]*m[6]) + m[2]*(m[3]*m[7]-m[4]*m[6]); }
     function axSum(m, x) { return m[0]*x[0]+m[1]*x[1]+m[2]*x[2]+m[3]*x[0]+m[4]*x[1]+m[5]*x[2]+m[6]*x[0]+m[7]*x[1]+m[8]*x[2]; }
-    
+
+    function getMats() {
+        return Array.from({length: activeTeams}, (_, t) =>
+            Array.from({length: 9}, (__, i) => parseInt(document.getElementById(`t${t}-c${i}`)?.value) || 0)
+        );
+    }
+
     function getX() {
-        return [parseInt(document.getElementById('mx0').value)||0, parseInt(document.getElementById('mx1').value)||0, parseInt(document.getElementById('mx2').value)||0];
+        const ids = ['mx0', 'mx1', 'mx2'];
+        const vals = ids.map(id => document.getElementById(id).value.trim());
+        if (vals.some(v => v === '')) {
+            const mats = getMats();
+            return [0, 1, 2].map(i => Math.floor(mats.reduce((s, m) => s + m[i * 4], 0) / activeTeams));
+        }
+        return vals.map(v => parseInt(v) || 0);
+    }
+
+    function setRound(n) {
+        currentRound = n;
+        document.querySelectorAll('.round-btn').forEach((b, i) => b.classList.toggle('active', i + 1 === n));
+        updateHUD();
+    }
+
+    function changeTeamCount(delta) {
+        activeTeams = Math.max(1, Math.min(6, activeTeams + delta));
+        document.getElementById('team-count-val').textContent = activeTeams;
+        if (focusIdx >= activeTeams) focusIdx = 0;
+        initTeams();
+    }
+
+    function setFocus(idx) {
+        focusIdx = idx;
+        document.querySelectorAll('.team-pill').forEach((p, i) => p.classList.toggle('active', i === idx));
+        document.querySelectorAll('.team-card').forEach((c, i) => c.classList.toggle('is-focus', i === idx));
+        document.getElementById('rec-target-label').textContent = `T${idx + 1}`;
+        updateHUD();
+    }
+
+    let lastSets = [];
+
+    // 완전 탐색: N개 서로 다른 칸의 ±1 조합 중 최적 세트 반환
+    function getBestSets(myM, scoreFn, n, topK = 8) {
+        const results = [];
+        function combine(start, chosen) {
+            if (chosen.length === n) {
+                for (let mask = 0; mask < (1 << n); mask++) {
+                    const m = [...myM];
+                    const moves = [];
+                    for (let j = 0; j < n; j++) {
+                        const d = (mask >> j) & 1 ? 1 : -1;
+                        m[chosen[j]] += d;
+                        moves.push({i: chosen[j], d});
+                    }
+                    results.push({moves, score: scoreFn(m)});
+                }
+                return;
+            }
+            for (let i = start; i < 9; i++) {
+                chosen.push(i);
+                combine(i + 1, chosen);
+                chosen.pop();
+            }
+        }
+        combine(0, []);
+        results.sort((a, b) => b.score - a.score);
+        return results.slice(0, topK);
+    }
+
+    function applySet(rank) {
+        const set = lastSets[rank];
+        if (!set) return;
+        set.moves.forEach(mv => {
+            const inp = document.getElementById(`t${focusIdx}-c${mv.i}`);
+            if (inp) inp.value = (parseInt(inp.value) || 0) + mv.d;
+        });
+        updateHUD();
     }
 
     function initTeams() {
-        activeTeams = parseInt(document.getElementById('team-count').value);
-        const cont = document.getElementById('matrix-container'); cont.innerHTML = '';
-        const fs = document.getElementById('focus-team'); fs.innerHTML = '';
-        for(let t=0; t<activeTeams; t++){
-            const c = document.createElement('div'); c.className=`team-card ${t===focusIdx?'is-focus':''}`;
-            c.innerHTML=`<div class="team-name">TEAM ${t+1}</div><div class="matrix-grid" id="grid-${t}"></div>`;
-            const g = c.querySelector('.matrix-grid');
-            for(let i=0;i<9;i++){
-                const w = document.createElement('div'); w.style.position='relative';
-                const n = document.createElement('input'); n.id=`t${t}-c${i}`; n.value=0; n.oninput=updateHUD;
-                w.appendChild(n);
-                if(t>0 && [0,4,8].includes(i)) { const m=document.createElement('div'); m.className='diag-mask'; m.textContent='?'; w.appendChild(m); }
-                g.appendChild(w);
+        const cont = document.getElementById('matrix-container');
+        cont.innerHTML = '';
+        const pillsEl = document.getElementById('team-pills');
+        pillsEl.innerHTML = '';
+
+        for (let t = 0; t < activeTeams; t++) {
+            const pill = document.createElement('div');
+            pill.className = `team-pill${t === focusIdx ? ' active' : ''}`;
+            pill.textContent = `T${t + 1}`;
+            pill.onclick = () => setFocus(t);
+            pillsEl.appendChild(pill);
+
+            const card = document.createElement('div');
+            card.className = `team-card${t === focusIdx ? ' is-focus' : ''}`;
+            card.onclick = () => setFocus(t);
+
+            const nameEl = document.createElement('div');
+            nameEl.className = 'team-name';
+            nameEl.textContent = `TEAM ${t + 1}`;
+            card.appendChild(nameEl);
+
+            const grid = document.createElement('div');
+            grid.className = 'matrix-grid';
+            for (let i = 0; i < 9; i++) {
+                const wrap = document.createElement('div');
+                wrap.style.position = 'relative';
+                const inp = document.createElement('input');
+                inp.type = 'number'; inp.id = `t${t}-c${i}`; inp.value = 0;
+                inp.oninput = updateHUD;
+                inp.addEventListener('focus', function () { this.select(); });
+                inp.onclick = e => e.stopPropagation();
+                wrap.appendChild(inp);
+                if (t > 0 && [0, 4, 8].includes(i)) {
+                    const mask = document.createElement('div');
+                    mask.className = 'diag-mask'; mask.textContent = '?';
+                    wrap.appendChild(mask);
+                }
+                grid.appendChild(wrap);
             }
-            cont.appendChild(c);
-            fs.innerHTML += `<option value="${t}">Team ${t+1}</option>`;
+            card.appendChild(grid);
+
+            const det = document.createElement('div');
+            det.className = 'det-box'; det.id = `det-${t}`;
+            card.appendChild(det);
+            cont.appendChild(card);
         }
+
+        document.getElementById('rec-target-label').textContent = `T${focusIdx + 1}`;
         updateHUD();
     }
 
     function updateHUD() {
-        const mats = Array.from({length:activeTeams}, (_,t)=>Array.from({length:9}, (__,i)=>parseInt(document.getElementById(`t${t}-c${i}`).value)||0));
-        let x = getX();
-        if(x.every(v=>v===0)) {
-            x = [0,0,0]; for(let i=0; i<3; i++) x[i] = Math.floor(mats.reduce((s, m) => s + m[i*4], 0) / activeTeams);
-        }
-        
-        let n = parseInt(document.getElementById('round-select').value);
-        let myM = mats[focusIdx], recs = [];
-        for(let i=0; i<9; i++) {
-            for(let d of [-1, 1]) {
-                let m = [...myM]; m[i]+=d;
-                recs.push({i, d, s: n<=2?axSum(m,x):calculateDet(m)});
-            }
-        }
-        recs.sort((a,b)=>b.s-a.s);
-        let rh = '';
-        recs.slice(0, 6).forEach(rec => {
-            rh += `<div class="rec-item"><b>[${Math.floor(rec.i/3)+1}, ${rec.i%3+1}]</b>에 ${rec.d>0?'+1':'-1'} 적용<br>예상: ${rec.s.toFixed(1)}</div>`;
+        const mats = getMats();
+        const x = getX();
+        const scoreFn = m => currentRound <= 2 ? axSum(m, x) : calculateDet(m);
+
+        mats.forEach((m, t) => {
+            const d = calculateDet(m), ax = axSum(m, x);
+            const el = document.getElementById(`det-${t}`);
+            if (el) el.innerHTML =
+                `<span>det: <b style="color:${d===0?'#ff4444':'#777'}">${d}</b></span>` +
+                `<span style="color:#00ffcc">${ax.toFixed(1)}</span>`;
         });
-        document.getElementById('recommendations').innerHTML = rh;
+
+        lastSets = getBestSets(mats[focusIdx], scoreFn, currentRound, 8);
+
+        const recEl = document.getElementById('recommendations');
+        recEl.innerHTML = '';
+        lastSets.forEach((set, rank) => {
+            const item = document.createElement('div');
+            item.className = `rec-item${rank === 0 ? ' top' : ''}`;
+            const tagsHtml = set.moves.map(mv =>
+                `<span class="mv-tag ${mv.d > 0 ? 'plus' : 'minus'}">[${Math.floor(mv.i/3)+1},${mv.i%3+1}]${mv.d>0?'+1':'-1'}</span>`
+            ).join('');
+            item.innerHTML =
+                `<div class="rec-item-row">` +
+                    `<span class="rec-rank">#${rank+1}</span>` +
+                    `<span class="rec-score">${set.score.toFixed(1)}</span>` +
+                    `<button class="rec-apply" onclick="applySet(${rank})">적용</button>` +
+                `</div>` +
+                `<div class="mv-tags">${tagsHtml}</div>`;
+            recEl.appendChild(item);
+        });
     }
 
-    function setFocus() { focusIdx = parseInt(document.getElementById('focus-team').value); initTeams(); }
-    function clearAll() { document.querySelectorAll('input').forEach(i=>i.value=0); updateHUD(); }
+    function clearAll() {
+        document.querySelectorAll('#matrix-container input[type=number]').forEach(i => i.value = 0);
+        updateHUD();
+    }
+
     initTeams();
 </script>
 </body>
