@@ -501,7 +501,8 @@ class MatrixGame:
         TEMP_START, TEMP_END = 1.0, 0.05
         win_cnt = surv_cnt = 0
 
-        for ep in tqdm(range(num_episodes)):
+        try:
+         for ep in tqdm(range(num_episodes)):
             self.reset_game()
             episode_actions = []
             episode_privs   = []
@@ -589,6 +590,12 @@ class MatrixGame:
                     "x":      to_cpu(self.x_vector).flatten().tolist(),
                     "score":  self.get_score(0)
                 })
+
+        except KeyboardInterrupt:
+            print("\n[중단됨] 가중치 저장 중...")
+            self._save()
+            print("저장 완료. 종료.")
+            return results_data
 
         print(f"\n최종: 승률={win_cnt/num_episodes*100:.2f}%  "
               f"생존율={surv_cnt/num_episodes*100:.2f}%")
