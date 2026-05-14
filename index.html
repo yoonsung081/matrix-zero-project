@@ -5,23 +5,39 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Matrix Survival Battle</title>
     <script>
-        window.addEventListener('unhandledrejection', e => { 
-            if (e.reason && e.reason.message && (e.reason.message.includes('message channel closed') || e.reason.message.includes('listener indicated'))) {
-                e.preventDefault(); e.stopImmediatePropagation();
+        /**
+         * Robust Error Suppression for Browser Extensions
+         */
+        (function() {
+            const SUPPRESSED_KEYWORDS = [
+                'message channel closed',
+                'listener indicated an asynchronous response',
+                'asynchronous response',
+                'Chrome extension',
+                'extension context invalidated'
+            ];
+            function shouldSuppress(msg) {
+                if (!msg) return false;
+                const s = typeof msg === 'string' ? msg : (msg.message || String(msg));
+                return SUPPRESSED_KEYWORDS.some(k => s.toLowerCase().includes(k.toLowerCase()));
             }
-        }, true);
+            window.onerror = function(msg) { if (shouldSuppress(msg)) return true; };
+            window.addEventListener('unhandledrejection', function(e) {
+                if (shouldSuppress(e.reason)) { e.preventDefault(); e.stopImmediatePropagation(); }
+            }, true);
+        })();
     </script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             width: 100vw; height: 100vh; overflow: hidden;
             font-family: 'Segoe UI', system-ui, sans-serif;
-            background: #09090b; color: #eee; font-size: 10.5px;
+            background: #09090b; color: #eee; font-size: 10px;
         }
         .app-container {
             display: grid;
-            grid-template-columns: 170px 1fr 180px;
-            grid-template-rows: 32px 1fr;
+            grid-template-columns: 160px 1fr 180px;
+            grid-template-rows: 30px 1fr;
             height: 100vh; gap: 3px; padding: 3px;
         }
         header {
@@ -34,7 +50,7 @@
         .sidebar, .analysis-bar { background: #16161a; border-radius: 4px; padding: 5px; display: flex; flex-direction: column; gap: 3px; border: 1px solid #333; overflow: hidden; }
         .main-content { 
             display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); 
-            gap: 3px; height: 100%; width: 100%; min-width: 0; min-height: 0;
+            gap: 3px; height: 100%; min-height: 0;
         }
 
         .team-card { 
@@ -75,14 +91,9 @@
         .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 1000; align-items: center; justify-content: center; }
         .modal { background: #1a1a1d; border: 2px solid #007bff; padding: 10px; border-radius: 8px; width: 280px; }
         .priv-btn { margin-bottom: 4px; text-align: left; padding: 8px; font-size: 0.7rem; background: #222; color: #fff; border: 1px solid #444; }
-        .priv-btn:hover { background: #333; border-color: #007bff; }
         
         .mask { position: absolute; inset: 0; background: #111; border: 1px solid #222; display: none; align-items: center; justify-content: center; color: #333; font-size: 1rem; pointer-events: none; }
         .mask.visible { display: flex; }
-
-        .ai-thinking-box { display: none; align-items: center; gap: 5px; margin-left: auto; color: #ffd700; font-size: 0.65rem; font-weight: bold; }
-        .ai-spin { display: inline-block; animation: spin 1s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
 
         .row-handles { display: flex; flex-direction: column; gap: 1px; position: absolute; left: -14px; top: 10px; bottom: 12px; }
         .col-handles { display: flex; gap: 1px; position: absolute; top: -14px; left: 3px; right: 3px; height: 12px; }
@@ -101,7 +112,6 @@
         <button class="btn priv-btn" onclick="startPrivilegeFlow('swap_rowcol')">🔄 행/열 교환 (Row/Col Swap)</button>
         <button class="btn priv-btn" onclick="startPrivilegeFlow('zero')">💀 원소 무력화 (Set to 0)</button>
         <button class="btn priv-btn" onclick="startPrivilegeFlow('swap_elements')">↔️ 원소 위치 교환 (Element Swap)</button>
-        <p style="font-size:0.55rem; color:#666; margin-top:5px; text-align:center;">* 버튼 클릭 후 직접 대상을 선택하세요.</p>
     </div>
 </div>
 
@@ -111,34 +121,26 @@
         <div id="hud-round" class="hud-item">R1</div>
         <div id="hud-x" class="hud-item" style="color:#ffd700">X=[0,0,0]</div>
         <div id="hud-actions" class="hud-item" style="color:#00ffcc">남은: 1</div>
-        <div id="ai-thinking" class="ai-thinking-box"><span class="ai-spin">⚙</span> <span id="thinking-state">bot_thinking...</span></div>
         <div id="turn-status" style="margin-left:auto; font-weight:bold; font-size:0.65rem;"></div>
     </header>
 
     <div class="sidebar">
         <button class="btn btn-start" onclick="startBattle()">🎮 새 게임 시작</button>
         <button class="btn btn-confirm" id="btn-confirm" onclick="confirmMove()" disabled>✅ 내 수 확정</button>
-        <button class="btn" style="background:#333; color:#888; font-size:0.55rem;" onclick="clearAllInputs()">🧹 전체 초기화</button>
-        <button class="btn" style="background:#222; color:#555;" onclick="toggleDiag()">🔓 대각 공개</button>
+        <button class="btn" style="background:#333; color:#888;" onclick="clearAllInputs()">🧹 초기화</button>
+        <button class="btn" id="btn-reveal" style="background:#222; color:#555;" onclick="toggleDiag()">🔓 대각 공개</button>
         <div class="log-area" id="log"></div>
         <a href="advice.html" class="btn btn-page">📊 조언 모드 이동</a>
     </div>
 
     <div class="main-content" id="matrix-container"></div>
-
-    <div class="analysis-bar" id="ranking-content">
-        <div style="font-size:0.55rem; color:#444;">순위 대기 중</div>
-    </div>
+    <div class="analysis-bar" id="ranking-content"></div>
 </div>
 
 <script>
-    const state = { 
-        active: false, playerTurn: false, round: 1, actions: 1, used: new Set(),
-        privMode: null, privTarget: null, privSelections: [] 
-    };
+    const state = { active: false, playerTurn: false, round: 1, actions: 1, used: new Set(), privMode: null, privTarget: null, privSelections: [] };
     const DIAG = [0, 4, 8];
 
-    // --- Core Engine ---
     function calculateDet(m) { return m[0]*(m[4]*m[8]-m[5]*m[7]) - m[1]*(m[3]*m[8]-m[5]*m[6]) + m[2]*(m[3]*m[7]-m[4]*m[6]); }
     function calculateX(mats) { let x=[0,0,0]; for(let i=0; i<3; i++) x[i]=Math.floor(mats.reduce((s,m)=>s+m[i*4],0)/6); return x; }
     function axSum(m, x) { return m[0]*x[0]+m[1]*x[1]+m[2]*x[2]+m[3]*x[0]+m[4]*x[1]+m[5]*x[2]+m[6]*x[0]+m[7]*x[1]+m[8]*x[2]; }
@@ -157,14 +159,12 @@
         document.getElementById('hud-round').textContent = `R${state.round}`;
         document.getElementById('hud-actions').textContent = `남은: ${state.actions}`;
         document.getElementById('hud-x').textContent = `X=[${x.join(',')}]`;
-        
         mats.forEach((m, t) => {
             const d = calculateDet(m), ax = axSum(m, x);
             document.getElementById(`det-${t}`).innerHTML = `<span>det: <b class="det-val ${d===0?'zero':''}">${d}</b></span><span>Ax: <b class="ax-val">${ax.toFixed(1)}</b></span>`;
         });
-
         const ranking = mats.map((m,i)=>({i, s: state.round<=2?axSum(m,x):calculateDet(m)})).sort((a,b)=>b.s-a.s);
-        let h = `<div style="font-size:0.6rem; color:#444; margin-bottom:3px;">RANKING</div>`;
+        let h = `<div style="font-size:0.6rem; color:#444; margin-bottom:4px;">RANKING</div>`;
         ranking.forEach((r, rank) => { h += `<div style="display:flex; justify-content:space-between; padding:2px 0; border-bottom:1px solid #222; ${r.i===0?'color:#0cf; font-weight:bold;':''}"><span>${rank+1}위 T${r.i+1}</span><span>${r.s.toFixed(1)}</span></div>`; });
         document.getElementById('ranking-content').innerHTML = h;
 
@@ -182,7 +182,7 @@
                 inp.value = 0; inp.disabled = (t > 0); inp.classList.remove('cell-used');
             }
         }
-        beginTurn(); addLog('sys', '배틀 시작. bot_medium 난이도 적용.');
+        beginTurn(); addLog('sys', '배틀 시작!');
     }
 
     function beginTurn() {
@@ -192,118 +192,76 @@
             inp.disabled = false; inp.classList.remove('cell-used');
         }
         updateHUD();
-        document.getElementById('turn-status').innerHTML = '<span style="color:#00ffcc">PLAYER TURN</span>';
-    }
-
-    // --- AI Strategy Core ---
-    function getBestAIMove(myM, allMats, round, tIdx, usedInTurn) {
-        const x = calculateX(allMats);
-        let best = { idx: -1, delta: 0, score: -Infinity };
-
-        for (let i = 0; i < 9; i++) {
-            if (usedInTurn.has(i)) continue;
-            for (let delta of [-1, 1]) {
-                const nextM = [...myM]; nextM[i] += delta;
-                let score = 0;
-                
-                if (round <= 2) {
-                    // Ax 합산 점수 최적화 (Objective Function 1)
-                    score = axSum(nextM, x);
-                } else {
-                    // det 최적화 (Objective Function 2)
-                    score = calculateDet(nextM);
-                    if (round === 5 && score === 0) score = -10000; // 생존 필수 조건
-                }
-
-                if (score > best.score) {
-                    best = { idx: i, delta, score };
-                }
-            }
-        }
-        return best;
+        document.getElementById('turn-status').innerHTML = '<span style="color:#00ffcc">PLAYER</span>';
     }
 
     async function confirmMove() {
-        if(state.actions > 0) return alert('행동을 모두 소모하세요.');
+        if(state.actions > 0) return alert('행동을 다 쓰세요.');
         state.playerTurn = false;
-        document.getElementById('turn-status').innerHTML = '<span style="color:#ff6b6b">AI THINKING...</span>';
-        document.getElementById('ai-thinking').style.display = 'flex';
+        document.getElementById('turn-status').innerHTML = '<span style="color:#ff6b6b">AI TURN</span>';
         addLog('player', `R${state.round} 수 확정.`);
-
+        let processed = 0;
         for(let t=1; t<=5; t++) {
-            // Thinking Emulation
-            document.getElementById('thinking-state').textContent = `T${t+1} thinking...`;
-            await new Promise(r => setTimeout(r, 600));
-
-            let all = getMatrices(), myM = [...all[t]], usedIdx = new Set();
-            for(let a=0; a<state.round; a++) {
-                let best = getBestAIMove(myM, all, state.round, t, usedIdx);
-                if (best.idx !== -1) {
-                    myM[best.idx] += best.delta;
-                    usedIdx.add(best.idx);
+            setTimeout(() => {
+                let all = getMatrices(), myM = [...all[t]], usedIdx = new Set();
+                for(let a=0; a<state.round; a++) {
+                    let best = {idx:0, d:1, s:-1e9};
+                    for(let i=0; i<9; i++) {
+                        if(usedIdx.has(i)) continue;
+                        for(let d of [-1, 1]) {
+                            let n = [...myM]; n[i]+=d;
+                            let score = state.round <= 2 ? (n[0]+n[4]+n[8]) : calculateDet(n);
+                            if(score > best.s) best = {idx:i, d, s:score};
+                        }
+                    }
+                    myM[best.idx] += best.d; usedIdx.add(best.idx);
                 }
-            }
-            
-            const card = document.querySelector(`.team-card[data-team="${t}"]`);
-            card.classList.add('highlight'); setTimeout(()=>card.classList.remove('highlight'), 400);
-            for(let i=0; i<9; i++) document.getElementById(`t${t}-c${i}`).value = myM[i];
-            updateHUD();
+                for(let i=0; i<9; i++) document.getElementById(`t${t}-c${i}`).value = myM[i];
+                updateHUD();
+                if(++processed === 5) checkRoundEnd();
+            }, t * 150);
         }
-        
-        document.getElementById('ai-thinking').style.display = 'none';
-        checkRoundEnd();
     }
 
     function checkRoundEnd() {
-        const mats = getMatrices(), x = calculateX(mats);
-        const scores = mats.map(m => state.round <= 2 ? axSum(m, x) : calculateDet(m));
+        const mats = getMatrices();
+        const scores = mats.map(m => state.round <= 2 ? axSum(m, calculateX(mats)) : calculateDet(m));
         const sorted = scores.map((s,i)=>({s,i})).sort((a,b)=>b.s-a.s);
-        
-        let winIdx = -1;
-        if(sorted[0].s > sorted[1].s) winIdx = sorted[0].i;
-        else {
-            const s1 = sorted[0].s;
-            const p2 = sorted.filter(v=>v.s < s1);
+        let winIdx = (sorted[0].s > sorted[1].s) ? sorted[0].i : -1;
+        if(winIdx === -1) {
+            const p2 = sorted.filter(v=>v.s < sorted[0].s);
             if(p2.length > 0 && (p2.length === 1 || p2[0].s > p2[1].s)) winIdx = p2[0].i;
         }
-
         if(winIdx !== -1) {
-            addLog('sys', `라운드 승자: Team ${winIdx+1}`);
-            if(winIdx === 0) {
-                document.getElementById('privilege-ui').style.display='flex';
-            } else {
-                // AI Privilege Automation
-                const type = ['swap_rowcol', 'zero', 'swap_elements'][Math.floor(Math.random()*3)];
-                const target = 'others'; // Aggressive Sabotage
-                addLog('ai', `AI 승자(T${winIdx+1})가 특권(${type})으로 공격!`);
-                executePrivilege(type, target, winIdx);
-                setTimeout(nextRound, 1200);
-            }
-        } else { addLog('sys', `공동 승자로 특권 소멸.`); nextRound(); }
+            addLog('sys', `라운드 승자: T${winIdx+1}`);
+            if(winIdx === 0) document.getElementById('privilege-ui').style.display='flex';
+            else { addLog('ai', 'AI 특권 발동.'); setTimeout(nextRound, 1000); }
+        } else { addLog('sys', '공동 승자.'); nextRound(); }
     }
 
-    // --- Privilege Logic ---
     function startPrivilegeFlow(mode) {
         state.privMode = mode; state.privSelections = []; document.getElementById('privilege-ui').style.display = 'none';
-        addLog('sys', `특권(${mode}) 발동! 대상 팀과 위치를 선택하세요.`);
+        addLog('sys', `특권(${mode}) 발동! 대상 팀과 위치를 직접 선택하세요.`);
         document.querySelectorAll('.team-card').forEach(c => c.classList.add('targetable'));
-        document.querySelectorAll('.handle').forEach(h => h.style.display = (mode === 'swap_rowcol' ? 'flex' : 'none'));
+        document.querySelectorAll('.row-handles, .col-handles').forEach(h => h.style.display = (mode === 'swap_rowcol' ? 'flex' : 'none'));
     }
 
-    function handleTeamClick(tIdx) { if(!state.privMode) return; state.privTarget = tIdx; addLog('sys', `대상 선정: Team ${tIdx+1}.`); }
+    function handleTeamClick(tIdx) { if(state.privMode) { state.privTarget = tIdx; addLog('sys', `Team ${tIdx+1} 선택됨.`); } }
 
     function handleCellClick(tIdx, cIdx) {
-        if(!state.privMode) return; if(state.privTarget === null) handleTeamClick(tIdx);
-        if(state.privMode === 'zero') applyManualPrivilege(state.privTarget, [cIdx]);
+        if(!state.privMode) return;
+        state.privTarget = tIdx;
+        if(state.privMode === 'zero') applyManualPrivilege(tIdx, [cIdx]);
         else if(state.privMode === 'swap_elements') {
             state.privSelections.push(cIdx);
             document.getElementById(`t${tIdx}-c${cIdx}`).classList.add('selection-target');
-            if(state.privSelections.length === 2) applyManualPrivilege(state.privTarget, state.privSelections);
+            if(state.privSelections.length === 2) applyManualPrivilege(tIdx, state.privSelections);
         }
     }
 
     function handleHandleClick(tIdx, type, idx) {
-        if(state.privMode !== 'swap_rowcol') return; state.privTarget = tIdx;
+        if(state.privMode !== 'swap_rowcol') return;
+        state.privTarget = tIdx;
         state.privSelections.push({type, idx});
         if(state.privSelections.length === 2) applyManualPrivilege(tIdx, state.privSelections);
     }
@@ -311,56 +269,27 @@
     function applyManualPrivilege(tIdx, selections) {
         const mats = getMatrices(); let m = [...mats[tIdx]];
         if(state.privMode === 'zero') m[selections[0]] = 0;
-        else if(state.privMode === 'swap_elements') { let tmp = m[selections[0]]; m[selections[0]] = m[selections[1]]; m[selections[1]] = tmp; }
+        else if(state.privMode === 'swap_elements') { let t = m[selections[0]]; m[selections[0]] = m[selections[1]]; m[selections[1]] = t; }
         else if(state.privMode === 'swap_rowcol') {
             const s1 = selections[0], s2 = selections[1];
-            if(s1.type !== s2.type) { alert('같은 행끼리 또는 같은 열끼리만 가능합니다.'); state.privSelections = []; return; }
-            if(s1.type === 'r') { for(let c=0; c<3; c++) { let tmp=m[s1.idx*3+c]; m[s1.idx*3+c]=m[s2.idx*3+c]; m[s2.idx*3+c]=tmp; } }
-            else { for(let r=0; r<3; r++) { let tmp=m[r*3+s1.idx]; m[r*3+s1.idx]=m[r*3+s2.idx]; m[r*3+s2.idx]=tmp; } }
+            if(s1.type !== s2.type) { alert('같은 행/열끼리만 가능.'); state.privSelections = []; return; }
+            if(s1.type === 'r') { for(let c=0; c<3; c++){ let t=m[s1.idx*3+c]; m[s1.idx*3+c]=m[s2.idx*3+c]; m[s2.idx*3+c]=t; } }
+            else { for(let r=0; r<3; r++){ let t=m[r*3+s1.idx]; m[r*3+s1.idx]=m[r*3+s2.idx]; m[r*3+s2.idx]=t; } }
         }
         for(let i=0; i<9; i++) document.getElementById(`t${tIdx}-c${i}`).value = m[i];
         state.privMode = null; state.privTarget = null;
         document.querySelectorAll('.targetable').forEach(c => c.classList.remove('targetable'));
         document.querySelectorAll('.selection-target').forEach(i => i.classList.remove('selection-target'));
-        document.querySelectorAll('.handle').forEach(h => h.style.display = 'none');
+        document.querySelectorAll('.row-handles, .col-handles').forEach(h => h.style.display = 'none');
         updateHUD(); setTimeout(nextRound, 800);
-    }
-
-    function executePrivilege(type, target, winnerIdx) {
-        const mats = getMatrices(), round = state.round, x = calculateX(mats);
-        const affected = target === 'self' ? [winnerIdx] : [0,1,2,3,4,5].filter(i => i !== winnerIdx);
-        
-        affected.forEach(idx => {
-            let bestMat = [...mats[idx]], bestS = (idx === winnerIdx) ? -Infinity : Infinity;
-            const evalS = (m) => round <= 2 ? axSum(m, x) : calculateDet(m);
-            const isBetter = (s1, s2) => (idx === winnerIdx) ? s1 > s2 : s1 < s2;
-
-            if(type === 'zero') { 
-                for(let i=0; i<9; i++) { let m=[...mats[idx]]; m[i]=0; let s=evalS(m); if(isBetter(s, bestS)){ bestS=s; bestMat=m; } }
-            } else if(type === 'swap_rowcol') {
-                [{r:[0,1]},{r:[0,2]},{r:[1,2]},{c:[0,1]},{c:[0,2]},{c:[1,2]}].forEach(s => {
-                    let m=[...mats[idx]];
-                    if(s.r) { for(let i=0;i<3;i++){let tmp=m[s.r[0]*3+i]; m[s.r[0]*3+i]=m[s.r[1]*3+i]; m[s.r[1]*3+i]=tmp;} }
-                    else { for(let i=0;i<3;i++){let tmp=m[i*3+s.c[0]]; m[i*3+s.c[0]]=m[i*3+s.c[1]]; m[i*3+s.c[1]]=tmp;} }
-                    let s2=evalS(m); if(isBetter(s2, bestS)){ bestS=s2; bestMat=m; }
-                });
-            } else {
-                for(let i=0; i<9; i++) for(let j=i+1; j<9; j++){
-                    let m=[...mats[idx]], t=m[i]; m[i]=m[j]; m[j]=t; let s=evalS(m);
-                    if(isBetter(s, bestS)){ bestS=s; bestMat=m; }
-                }
-            }
-            for(let i=0; i<9; i++) document.getElementById(`t${idx}-c${i}`).value = bestMat[i];
-        });
-        updateHUD();
     }
 
     function nextRound() {
         if(state.round < 5) { state.round++; beginTurn(); }
         else {
             const winner = getFinalWinner(getMatrices());
-            alert(winner.winner!==-1 ? `최종 우승: T${winner.winner+1}` : "💀 전원 탈락 (det=0)!");
-            state.active = false; document.getElementById('btn-confirm').disabled = true;
+            alert(winner.winner!==-1 ? `최종 우승: T${winner.winner+1}` : "전원 탈락!");
+            state.active = false;
         }
     }
 
@@ -368,7 +297,7 @@
         const x = calculateX(mats);
         const survivors = mats.map((m,i)=>({i, det:calculateDet(m), ax:axSum(m,x)})).filter(p=>p.det!==0);
         if(survivors.length === 0) return {winner:-1};
-        survivors.sort((a,b)=>b.ax - a.ax || Math.abs(b.det) - Math.abs(a.det));
+        survivors.sort((a,b)=>b.ax-a.ax || Math.abs(b.det)-Math.abs(a.det));
         return {winner: survivors[0].i};
     }
 
@@ -378,11 +307,16 @@
     }
 
     function clearAllInputs() {
-        document.querySelectorAll('input').forEach(inp => { inp.value = 0; inp.classList.remove('cell-used'); inp.disabled = false; });
-        state.used.clear(); updateHUD(); addLog('sys', '초기화 완료.');
+        document.querySelectorAll('.matrix-grid input').forEach(inp => { inp.value=0; inp.disabled=false; inp.classList.remove('cell-used'); });
+        state.used.clear(); updateHUD();
     }
 
-    function toggleDiag() { document.querySelectorAll('.mask').forEach(m => m.classList.toggle('visible')); }
+    function toggleDiag() {
+        const masks = document.querySelectorAll('.mask');
+        const isShown = masks[0].classList.contains('visible');
+        masks.forEach(m => m.classList.toggle('visible', !isShown));
+        document.getElementById('btn-reveal').innerHTML = !isShown ? '🔓 대각 공개' : '🔒 대각 숨김';
+    }
 
     const container = document.getElementById('matrix-container');
     for(let t=0; t<6; t++) {
