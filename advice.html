@@ -279,17 +279,46 @@
         updateHUD();
     }
 
+    function getFinalWinners(mats, x) {
+        const teams = mats.map((m, t) => ({ t, det: calculateDet(m), ax: axSum(m, x) }));
+        const eligible = teams.filter(e => e.det !== 0);
+        if (!eligible.length) return [];
+        const bestAx = Math.max(...eligible.map(e => e.ax));
+        const topAx = eligible.filter(e => e.ax === bestAx);
+        const bestDet = Math.max(...topAx.map(e => e.det));
+        return topAx.filter(e => e.det === bestDet).map(e => e.t);
+    }
+
     function updateHUD() {
         const mats = getMats();
         const x = getX();
-        const scoreFn = m => currentRound <= 2 ? axSum(m, x) : calculateDet(m);
+        const scoreFn = m => {
+            if (currentRound <= 2) return axSum(m, x);
+            if (currentRound < 5) return calculateDet(m);
+            const det = calculateDet(m);
+            return det === 0 ? -1e9 : axSum(m, x);
+        };
+
+        const winners = currentRound === 5 ? getFinalWinners(mats, x) : [];
 
         mats.forEach((m, t) => {
             const d = calculateDet(m), ax = axSum(m, x);
             const el = document.getElementById(`det-${t}`);
-            if (el) el.innerHTML =
-                `<span>det: <b style="color:${d===0?'#ff4444':'#777'}">${d}</b></span>` +
-                `<span style="color:#00ffcc">${ax.toFixed(1)}</span>`;
+            if (!el) return;
+            if (currentRound === 5) {
+                let statusColor, statusText;
+                if (d === 0) { statusColor = '#ff4444'; statusText = '탈락'; }
+                else if (winners.includes(t)) { statusColor = '#00ffcc'; statusText = winners.length > 1 ? '공동우승' : '우승'; }
+                else { statusColor = '#888'; statusText = '생존'; }
+                el.innerHTML =
+                    `<span>det:<b style="color:${d===0?'#ff4444':'#777'}">${d}</b></span>` +
+                    `<span style="color:#aaa">Ax:${ax.toFixed(0)}</span>` +
+                    `<span style="color:${statusColor};font-weight:bold">${statusText}</span>`;
+            } else {
+                el.innerHTML =
+                    `<span>det: <b style="color:${d===0?'#ff4444':'#777'}">${d}</b></span>` +
+                    `<span style="color:#00ffcc">${ax.toFixed(1)}</span>`;
+            }
         });
 
         lastSets = getBestSets(mats[focusIdx], scoreFn, currentRound, 8);
@@ -302,10 +331,13 @@
             const tagsHtml = set.moves.map(mv =>
                 `<span class="mv-tag ${mv.d > 0 ? 'plus' : 'minus'}">[${Math.floor(mv.i/3)+1},${mv.i%3+1}]${mv.d>0?'+1':'-1'}</span>`
             ).join('');
+            const scoreDisplay = currentRound === 5
+                ? (set.score <= -1e8 ? 'det=0' : `Ax:${set.score.toFixed(0)}`)
+                : set.score.toFixed(1);
             item.innerHTML =
                 `<div class="rec-item-row">` +
                     `<span class="rec-rank">#${rank+1}</span>` +
-                    `<span class="rec-score">${set.score.toFixed(1)}</span>` +
+                    `<span class="rec-score">${scoreDisplay}</span>` +
                     `<button class="rec-apply" onclick="applySet(${rank})">적용</button>` +
                 `</div>` +
                 `<div class="mv-tags">${tagsHtml}</div>`;

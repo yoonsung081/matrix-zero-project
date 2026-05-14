@@ -1,4 +1,4 @@
-print("\n[System] Loading Evo-Matrix AI Engine v2.1 (Pure RL Mode)...")
+print("\n[System] Loading Evo-Matrix AI Engine v3.0 (MLP + Action Masking + League)...")
 import os
 import sys
 import gc
@@ -50,39 +50,39 @@ from tqdm import tqdm
 
 PRIV_NAMES = ["행 교환", "열 교환", "원소 0으로 만들기", "두 원소 위치 교환"]
 
-# ── 특징 벡터 차원 ──────────────────────────────────────────────
-# [0:9]   내 행렬 (9)
-# [9:12]  x 벡터 (3)
-# [12]    라운드 (1)
-# [13:19] 전체 팀 점수 정규화 (6)
-# [19:25] 전체 팀 행렬식 정규화 (6)
-# [25]    내 순위 정규화 0=1위 1=꼴찌 (1)
-# [26]    편향 bias (1)
-# [27:30] 패딩 (3)
-FEAT_DIM = 30
-ACT_DIM  = 18   # 9칸 × ±1
-PRIV_DIM = 8    # 4종류 × 2선택(나에게만=0 / 전체 타팀=1)
-#   priv_action_idx // 2 → priv_type (0=행교환, 1=열교환, 2=원소0, 3=두원소교환)
-#   priv_action_idx %  2 → scope     (0=나에게, 1=전체 타팀)
+FEAT_DIM   = 30
+HIDDEN_DIM = 64   # 개선1: MLP 은닉층
+ACT_DIM    = 18
+PRIV_DIM   = 8
 
 
 class MatrixGame:
     def __init__(self):
         self.num_players = 6
-        self.matrices   = [cp.zeros((3, 3), dtype=int) for _ in range(self.num_players)]
-        self.x_vector   = cp.zeros((3, 1), dtype=int)
+        self.matrices    = [cp.zeros((3, 3), dtype=int) for _ in range(self.num_players)]
+        self.x_vector    = cp.zeros((3, 1), dtype=int)
         self.current_round = 1
 
-        # 가중치 (Pure RL — 휴리스틱 없음)
-        self.weights      = cp.random.randn(FEAT_DIM, ACT_DIM)  * 0.01
-        self.priv_weights = cp.random.randn(FEAT_DIM, PRIV_DIM) * 0.01
+        # 개선1: 선형 → MLP (일반 행동)
+        self.w1 = cp.random.randn(FEAT_DIM,   HIDDEN_DIM) * 0.01
+        self.b1 = cp.zeros(HIDDEN_DIM)
+        self.w2 = cp.random.randn(HIDDEN_DIM, ACT_DIM)    * 0.01
+        self.b2 = cp.zeros(ACT_DIM)
 
-        self.learning_rate = 0.001
-        # 분산 감소용 Baseline (지수이동평균)
+        # 개선1: 선형 → MLP (특권 행동)
+        self.pw1 = cp.random.randn(FEAT_DIM,   HIDDEN_DIM) * 0.01
+        self.pb1 = cp.zeros(HIDDEN_DIM)
+        self.pw2 = cp.random.randn(HIDDEN_DIM, PRIV_DIM)   * 0.01
+        self.pb2 = cp.zeros(PRIV_DIM)
+
+        self.learning_rate   = 0.001
         self.reward_baseline = 0.0
         self.baseline_alpha  = 0.005
 
-        # self-play 이전 세대 저장
+        # 개선2: 라운드별 사용 칸 추적 (액션 마스킹)
+        self.used_cells = [set() for _ in range(self.num_players)]
+
+        # 개선3: 리그 히스토리 스냅샷
         self.learner_history = []
 
     # ── 기본 게임 로직 ────────────────────────────────────────────
@@ -119,7 +119,7 @@ class MatrixGame:
         if not survivors:
             return []
         best_ax = max(s[0] for s in survivors)
-        top_ax = [s for s in survivors if s[0] == best_ax]
+        top_ax  = [s for s in survivors if s[0] == best_ax]
         if len(top_ax) == 1:
             return [top_ax[0][2]]
         best_det = max(s[1] for s in top_ax)
@@ -137,78 +137,87 @@ class MatrixGame:
         self.matrices      = [cp.zeros((3, 3), dtype=int) for _ in range(self.num_players)]
         self.x_vector      = cp.zeros((3, 1), dtype=int)
         self.current_round = 1
+        for s in self.used_cells:
+            s.clear()
 
     # ── 특징 벡터 ─────────────────────────────────────────────────
 
     def _get_feature(self, p_idx):
-        """
-        30차원 순수 게임 상태 인코딩.
-        휴리스틱 계산 없이 관측 가능한 값만 사용.
-        """
         feat = np.zeros(FEAT_DIM, dtype=np.float32)
-
-        # 내 행렬
-        feat[0:9] = to_cpu(self.matrices[p_idx].flatten()).astype(np.float32)
-
-        # x 벡터
+        feat[0:9]  = to_cpu(self.matrices[p_idx].flatten()).astype(np.float32)
         feat[9:12] = to_cpu(self.x_vector.flatten()).astype(np.float32)
+        feat[12]   = float(self.current_round)
 
-        # 라운드
-        feat[12] = float(self.current_round)
-
-        # 전체 팀 점수 (정규화)
-        scores = np.array([self.get_score(i) for i in range(self.num_players)], dtype=np.float32)
-        denom  = np.max(np.abs(scores)) + 1e-8
+        scores    = np.array([self.get_score(i) for i in range(self.num_players)], dtype=np.float32)
+        denom     = np.max(np.abs(scores)) + 1e-8
         feat[13:19] = scores / denom
 
-        # 전체 팀 행렬식 (정규화)
         dets = np.array([
             float(to_cpu(cp.round(cp.linalg.det(self.matrices[i].astype(cp.float32)))))
             for i in range(self.num_players)
         ], dtype=np.float32)
-        denom_det = np.max(np.abs(dets)) + 1e-8
+        denom_det   = np.max(np.abs(dets)) + 1e-8
         feat[19:25] = dets / denom_det
 
-        # 내 순위 (0=1위, 1=꼴찌)
         my_score = float(scores[p_idx])
         rank = sum(1 for s in scores if s > my_score) + 1
         feat[25] = (rank - 1) / max(self.num_players - 1, 1)
-
-        # bias
-        feat[26] = 1.0
+        feat[26]  = 1.0
 
         return cp.array(feat)
+
+    # ── 개선1: MLP 순전파 ─────────────────────────────────────────
+
+    def _mlp_forward(self, feat, w1, b1, w2, b2):
+        h = cp.maximum(0, cp.dot(feat, w1) + b1)   # ReLU
+        return cp.dot(h, w2) + b2, h
+
+    def _current_mlp(self):
+        return (self.w1, self.b1, self.w2, self.b2)
+
+    # ── 개선2: 액션 마스킹 ────────────────────────────────────────
+
+    def _get_action_mask(self, p_idx):
+        mask = cp.ones(ACT_DIM, dtype=cp.float32)
+        for r, c in self.used_cells[p_idx]:
+            cell_idx = r * 3 + c
+            mask[cell_idx * 2]     = 0.0
+            mask[cell_idx * 2 + 1] = 0.0
+        return mask
 
     # ── softmax 탐험 ──────────────────────────────────────────────
 
     def _softmax_sample(self, logits, temperature):
-        """
-        온도 기반 softmax 샘플링.
-        temperature → 0 : greedy,  temperature → ∞ : random
-        """
         l = logits / max(temperature, 1e-6)
-        l = l - cp.max(l)                  # 수치 안정성
+        l = l - cp.max(l)
         probs = cp.exp(l)
         probs = probs / cp.sum(probs)
         probs_cpu = to_cpu(probs).astype(np.float64)
-        probs_cpu = probs_cpu / probs_cpu.sum()   # 부동소수점 오차 보정
+        probs_cpu = probs_cpu / probs_cpu.sum()
         return int(np.random.choice(len(probs_cpu), p=probs_cpu))
 
     # ── 에이전트 ──────────────────────────────────────────────────
 
     def agent_random(self, p_idx):
-        """완전 랜덤 에이전트 (학습 상대용)"""
-        r, c = random.randint(0, 2), random.randint(0, 2)
+        # 개선2: 이미 사용한 칸 제외
+        avail = [(r, c) for r in range(3) for c in range(3)
+                 if (r, c) not in self.used_cells[p_idx]]
+        if not avail:
+            avail = [(r, c) for r in range(3) for c in range(3)]
+        r, c = random.choice(avail)
         self.matrices[p_idx][r, c] += random.choice([-1, 1])
+        self.used_cells[p_idx].add((r, c))
 
-    def agent_learner_act(self, p_idx, weights, temperature=0.0):
-        """
-        학습 에이전트 행동.
-        temperature > 0 : softmax 탐험
-        temperature = 0 : greedy (평가/대전 시)
-        """
+    def agent_learner_act(self, p_idx, mlp, temperature=0.0):
+        w1, b1, w2, b2 = mlp
         feat = self._get_feature(p_idx)
-        logits = cp.dot(feat, weights)
+
+        # 개선1: MLP 순전파
+        logits, h = self._mlp_forward(feat, w1, b1, w2, b2)
+
+        # 개선2: 사용한 칸 마스킹
+        mask   = self._get_action_mask(p_idx)
+        logits = logits + (1.0 - mask) * cp.float32(-1e9)
 
         if temperature > 0:
             action_idx = self._softmax_sample(logits, temperature)
@@ -219,19 +228,15 @@ class MatrixGame:
         c_idx = (action_idx // 2) % 3
         v     = 1 if action_idx % 2 == 0 else -1
         self.matrices[p_idx][r_idx, c_idx] += v
-        return feat, action_idx
+        self.used_cells[p_idx].add((r_idx, c_idx))
+        return feat, h, action_idx
 
     def _best_priv_position_global(self, priv_type, winner_idx):
-        """
-        전체 타팀에 일괄 적용할 단일 최적 위치 탐색.
-        기준: 동일 위치를 모든 타팀에 적용했을 때 타팀 점수 합이 최소.
-        priv_type: 0=행교환, 1=열교환, 2=원소0, 3=두원소교환
-        """
-        others = [t for t in range(self.num_players) if t != winner_idx]
+        others      = [t for t in range(self.num_players) if t != winner_idx]
         best_effect = None
         best_total  = float('inf')
 
-        if priv_type == 0:  # 행 교환
+        if priv_type == 0:
             for i, j in [(0,1),(0,2),(1,2)]:
                 total = 0
                 for t in others:
@@ -241,7 +246,7 @@ class MatrixGame:
                 if total < best_total:
                     best_total = total; best_effect = (i, j)
 
-        elif priv_type == 1:  # 열 교환
+        elif priv_type == 1:
             for i, j in [(0,1),(0,2),(1,2)]:
                 total = 0
                 for t in others:
@@ -251,7 +256,7 @@ class MatrixGame:
                 if total < best_total:
                     best_total = total; best_effect = (i, j)
 
-        elif priv_type == 2:  # 원소 0
+        elif priv_type == 2:
             for r in range(3):
                 for c in range(3):
                     total = 0
@@ -262,7 +267,7 @@ class MatrixGame:
                     if total < best_total:
                         best_total = total; best_effect = (r, c)
 
-        elif priv_type == 3:  # 두 원소 교환
+        elif priv_type == 3:
             pos = [(r, c) for r in range(3) for c in range(3)]
             for k in range(len(pos)):
                 for l in range(k+1, len(pos)):
@@ -279,11 +284,6 @@ class MatrixGame:
         return best_effect
 
     def apply_privilege(self, winner_idx, priv_type, scope):
-        """
-        특권 실제 적용.
-        scope=0 : 나에게만        → 내 점수 최대화하는 위치 선택
-        scope=1 : 전체 타팀 일괄 → 타팀 점수 합 최소화하는 단일 위치로 전원 적용
-        """
         if scope == 0:
             effect = self._best_priv_position(priv_type, winner_idx, minimize=False)
             self._apply_priv(priv_type, winner_idx, effect)
@@ -294,12 +294,8 @@ class MatrixGame:
                     self._apply_priv(priv_type, t, effect)
 
     def agent_learner_privilege(self, winner_idx, temperature=0.0):
-        """
-        학습 에이전트 특권 선택.
-        특권 액션 공간: priv_type(0~2) * 2 + scope(0=나 / 1=전체타팀) = 6가지
-        """
-        feat   = self._get_feature(winner_idx)
-        logits = cp.dot(feat, self.priv_weights)
+        feat = self._get_feature(winner_idx)
+        logits, h = self._mlp_forward(feat, self.pw1, self.pb1, self.pw2, self.pb2)
 
         if temperature > 0:
             priv_action_idx = self._softmax_sample(logits, temperature)
@@ -307,13 +303,12 @@ class MatrixGame:
             priv_action_idx = int(to_cpu(cp.argmax(logits)))
 
         priv_type = priv_action_idx // 2
-        scope     = priv_action_idx % 2   # 0=나에게, 1=전체 타팀
+        scope     = priv_action_idx % 2
 
         self.apply_privilege(winner_idx, priv_type, scope)
-        return feat, priv_action_idx
+        return feat, h, priv_action_idx
 
     def agent_random_privilege(self, winner_idx):
-        """랜덤 에이전트의 특권: 유형·범위 랜덤, 위치 greedy"""
         priv_type = random.randint(0, 2)
         scope     = random.randint(0, 1)
         self.apply_privilege(winner_idx, priv_type, scope)
@@ -327,10 +322,6 @@ class MatrixGame:
         return float(to_cpu(cp.round(cp.linalg.det(m_f))))
 
     def _best_priv_position(self, priv_type, target_idx, minimize=False):
-        """
-        단일 대상에 대한 최적 위치 탐색.
-        priv_type: 0=행교환, 1=열교환, 2=원소0, 3=두원소교환
-        """
         m = self.matrices[target_idx]
         best_effect = None
         best_score  = float('inf') if minimize else -float('inf')
@@ -338,104 +329,108 @@ class MatrixGame:
         def is_better(s):
             return s < best_score if minimize else s > best_score
 
-        if priv_type == 0:  # 행 교환
+        if priv_type == 0:
             for i, j in [(0,1),(0,2),(1,2)]:
                 m_new = m.copy()
                 tmp = m_new[i].copy(); m_new[i] = m_new[j]; m_new[j] = tmp
                 s = self._eval_matrix(m_new)
-                if is_better(s):
-                    best_score = s; best_effect = (i, j)
+                if is_better(s): best_score = s; best_effect = (i, j)
 
-        elif priv_type == 1:  # 열 교환
+        elif priv_type == 1:
             for i, j in [(0,1),(0,2),(1,2)]:
                 m_new = m.copy()
                 tmp = m_new[:,i].copy(); m_new[:,i] = m_new[:,j]; m_new[:,j] = tmp
                 s = self._eval_matrix(m_new)
-                if is_better(s):
-                    best_score = s; best_effect = (i, j)
+                if is_better(s): best_score = s; best_effect = (i, j)
 
-        elif priv_type == 2:  # 원소 0
+        elif priv_type == 2:
             for r in range(3):
                 for c in range(3):
                     if int(to_cpu(m[r, c])) != 0:
                         m_new = m.copy(); m_new[r, c] = 0
                         s = self._eval_matrix(m_new)
-                        if is_better(s):
-                            best_score = s; best_effect = (r, c)
+                        if is_better(s): best_score = s; best_effect = (r, c)
 
-        elif priv_type == 3:  # 두 원소 교환
+        elif priv_type == 3:
             pos = [(r, c) for r in range(3) for c in range(3)]
             for k in range(len(pos)):
                 for l in range(k+1, len(pos)):
                     r1,c1 = pos[k]; r2,c2 = pos[l]
-                    if int(to_cpu(m[r1,c1])) == int(to_cpu(m[r2,c2])):
-                        continue
+                    if int(to_cpu(m[r1,c1])) == int(to_cpu(m[r2,c2])): continue
                     m_new = m.copy()
                     tmp = m_new[r1,c1].copy()
                     m_new[r1,c1] = m_new[r2,c2]; m_new[r2,c2] = tmp
                     s = self._eval_matrix(m_new)
-                    if is_better(s):
-                        best_score = s; best_effect = (r1,c1,r2,c2)
+                    if is_better(s): best_score = s; best_effect = (r1,c1,r2,c2)
 
         return best_effect
 
     def _apply_priv(self, priv_type, target_idx, effect):
-        if effect is None:
-            return
+        if effect is None: return
         m = self.matrices[target_idx]
-        if priv_type == 0:  # 행 교환
-            i, j = effect
-            tmp = m[i].copy(); m[i] = m[j]; m[j] = tmp
-        elif priv_type == 1:  # 열 교환
-            i, j = effect
-            tmp = m[:,i].copy(); m[:,i] = m[:,j]; m[:,j] = tmp
-        elif priv_type == 2:  # 원소 0
+        if priv_type == 0:
+            i, j = effect; tmp = m[i].copy(); m[i] = m[j]; m[j] = tmp
+        elif priv_type == 1:
+            i, j = effect; tmp = m[:,i].copy(); m[:,i] = m[:,j]; m[:,j] = tmp
+        elif priv_type == 2:
             r, c = effect; m[r, c] = 0
-        elif priv_type == 3:  # 두 원소 교환
+        elif priv_type == 3:
             r1,c1,r2,c2 = effect
             tmp = m[r1,c1].copy(); m[r1,c1] = m[r2,c2]; m[r2,c2] = tmp
 
-    # ── 가중치 업데이트 ───────────────────────────────────────────
+    # ── 개선1: MLP REINFORCE 역전파 ───────────────────────────────
 
     def update_weights(self, episode_actions, episode_privs, final_reward):
-        """
-        REINFORCE + Baseline (advantage = reward - EMA baseline).
-        휴리스틱 없이 순수 정책 그래디언트.
-        """
-        # Baseline 업데이트 (지수이동평균)
         self.reward_baseline += self.baseline_alpha * (final_reward - self.reward_baseline)
         advantage = final_reward - self.reward_baseline
+        gamma     = 0.95
 
-        gamma = 0.95
+        for feat, h, action_idx, r_num in episode_actions:
+            scale = self.learning_rate * advantage * (gamma ** (5 - r_num))
+            e_a   = cp.zeros(ACT_DIM, dtype=cp.float32)
+            e_a[action_idx] = 1.0
 
-        # 일반 행동
-        for feat, action_idx, r_num in episode_actions:
-            discount = gamma ** (5 - r_num)
-            grad = cp.outer(feat, cp.eye(ACT_DIM, dtype=cp.float32)[action_idx])
-            self.weights += self.learning_rate * advantage * discount * grad
-        self.weights = cp.clip(self.weights, -1, 1)
+            d_h = cp.dot(self.w2, e_a) * (h > 0)   # w2 업데이트 전에 계산
 
-        # 특권 행동
-        for feat, priv_action_idx, r_num in episode_privs:
-            discount = gamma ** (5 - r_num)
-            grad = cp.outer(feat, cp.eye(PRIV_DIM, dtype=cp.float32)[priv_action_idx])
-            self.priv_weights += self.learning_rate * advantage * discount * grad
-        self.priv_weights = cp.clip(self.priv_weights, -1, 1)
+            self.w2 += scale * cp.outer(h, e_a)
+            self.b2 += scale * e_a
+            self.w1 += scale * cp.outer(feat, d_h)
+            self.b1 += scale * d_h
+
+        for arr in [self.w1, self.b1, self.w2, self.b2]:
+            cp.clip(arr, -1, 1, out=arr)
+
+        for feat, h, priv_action_idx, r_num in episode_privs:
+            scale = self.learning_rate * advantage * (gamma ** (5 - r_num))
+            e_a   = cp.zeros(PRIV_DIM, dtype=cp.float32)
+            e_a[priv_action_idx] = 1.0
+
+            d_h = cp.dot(self.pw2, e_a) * (h > 0)
+
+            self.pw2 += scale * cp.outer(h, e_a)
+            self.pb2 += scale * e_a
+            self.pw1 += scale * cp.outer(feat, d_h)
+            self.pb1 += scale * d_h
+
+        for arr in [self.pw1, self.pb1, self.pw2, self.pb2]:
+            cp.clip(arr, -1, 1, out=arr)
+
+    # ── 개선3: 리그 스냅샷 ────────────────────────────────────────
+
+    def _snapshot(self):
+        return {
+            'w1': self.w1.copy(), 'b1': self.b1.copy(),
+            'w2': self.w2.copy(), 'b2': self.b2.copy(),
+        }
 
     # ── 시뮬레이션 ────────────────────────────────────────────────
 
     def run_simulation(self, num_episodes=30000):
-        """
-        Pure RL Self-play.
-        상대: 완전 랜덤(V1) + 이전 세대 자신 — 휴리스틱 에이전트 없음.
-        탐험: softmax temperature 1.0 → 0.05 선형 감소.
-        """
-        print(f"Starting Pure RL Simulation: {num_episodes} episodes")
-        print("상대 구성: Random + Self-play  |  탐험: softmax temperature decay\n")
+        print(f"Starting MLP RL Simulation: {num_episodes} episodes")
+        print("개선: MLP 정책 / 액션 마스킹 / 리그 상대 (Random 20% / 이전세대 30% / 최신자신 50%)\n")
         results_data = []
 
-        # 초기 히스토리
-        self.learner_history.append((self.weights.copy(), self.priv_weights.copy()))
+        self.learner_history.append(self._snapshot())
 
         TEMP_START = 1.0
         TEMP_END   = 0.05
@@ -445,43 +440,50 @@ class MatrixGame:
             episode_actions = []
             episode_privs   = []
 
-            # 온도 선형 감소 (탐험 → 활용)
             temperature = TEMP_START - (TEMP_START - TEMP_END) * (ep / num_episodes)
 
-            # 1000판마다 현재 가중치 스냅샷 저장
             if ep % 1000 == 0:
-                self.learner_history.append((self.weights.copy(), self.priv_weights.copy()))
+                self.learner_history.append(self._snapshot())
 
-            # 상대 구성: 랜덤 또는 이전 세대 — 휴리스틱 없음
+            # 개선3: 리그 상대 구성
             opponents = []
             for _ in range(5):
-                opponents.append("Random" if random.random() < 0.3 else "OldSelf")
+                rv = random.random()
+                if rv < 0.2:
+                    opponents.append("Random")
+                elif rv < 0.5 and len(self.learner_history) > 1:
+                    opponents.append("League")   # 랜덤 이전 세대 챔피언
+                else:
+                    opponents.append("OldSelf")  # 가장 최근 스냅샷
 
             for r in range(1, 6):
                 self.current_round = r
+                for s in self.used_cells:   # 라운드 시작 시 사용 칸 초기화
+                    s.clear()
 
                 for p in range(self.num_players):
                     for _ in range(r):
-                        if p == 0:  # 학습 에이전트
-                            feat, a_idx = self.agent_learner_act(p, self.weights, temperature)
-                            episode_actions.append((feat, a_idx, r))
+                        if p == 0:
+                            feat, h, a_idx = self.agent_learner_act(p, self._current_mlp(), temperature)
+                            episode_actions.append((feat, h, a_idx, r))
                         else:
                             opp = opponents[p - 1]
                             if opp == "Random":
                                 self.agent_random(p)
+                            elif opp == "League":
+                                snap = random.choice(self.learner_history)
+                                self.agent_learner_act(p, (snap['w1'], snap['b1'], snap['w2'], snap['b2']))
                             else:
-                                old_w, _ = random.choice(self.learner_history)
-                                # 이전 세대는 greedy (평가 모드)
-                                self.agent_learner_act(p, old_w, temperature=0.0)
+                                snap = self.learner_history[-1]
+                                self.agent_learner_act(p, (snap['w1'], snap['b1'], snap['w2'], snap['b2']))
 
                 self.calculate_x()
 
-                # 특권 처리 (3종류 모두 반영)
                 winner = self.get_round_winner()
                 if winner is not None:
                     if winner == 0:
-                        feat, priv_a = self.agent_learner_privilege(winner, temperature)
-                        episode_privs.append((feat, priv_a, r))
+                        feat, h, priv_a = self.agent_learner_privilege(winner, temperature)
+                        episode_privs.append((feat, h, priv_a, r))
                     else:
                         self.agent_random_privilege(winner)
 
@@ -501,10 +503,13 @@ class MatrixGame:
 
         with open("strategy_weights.json", "w") as f:
             json.dump({
-                "weights":      to_cpu(self.weights).tolist(),
-                "priv_weights": to_cpu(self.priv_weights).tolist(),
-                "feat_dim":     FEAT_DIM,
-                "sample_data":  results_data
+                "w1": to_cpu(self.w1).tolist(),  "b1": to_cpu(self.b1).tolist(),
+                "w2": to_cpu(self.w2).tolist(),  "b2": to_cpu(self.b2).tolist(),
+                "pw1": to_cpu(self.pw1).tolist(), "pb1": to_cpu(self.pb1).tolist(),
+                "pw2": to_cpu(self.pw2).tolist(), "pb2": to_cpu(self.pb2).tolist(),
+                "feat_dim":   FEAT_DIM,
+                "hidden_dim": HIDDEN_DIM,
+                "sample_data": results_data
             }, f)
         print("\nTraining Complete. Weights saved to strategy_weights.json")
 
@@ -518,15 +523,18 @@ class MatrixGame:
             with open(filename, "r") as f:
                 data = json.load(f)
 
-            saved_dim = data.get("feat_dim", 20)
-            if saved_dim != FEAT_DIM:
-                print(f"  [경고] 저장된 특징 차원({saved_dim}) ≠ 현재({FEAT_DIM}). 재학습 필요.")
+            if data.get("feat_dim", 0) != FEAT_DIM or data.get("hidden_dim", 0) != HIDDEN_DIM:
+                print(f"  [경고] 저장된 차원이 현재와 다릅니다 (feat={data.get('feat_dim')}, hidden={data.get('hidden_dim')}). 재학습 필요.")
+                return False
+            if "w1" not in data:
+                print("  [경고] 구버전 가중치 형식 (선형 모델). 재학습 필요.")
                 return False
 
-            self.weights      = cp.array(data["weights"])
-            if "priv_weights" in data:
-                self.priv_weights = cp.array(data["priv_weights"])
-            print("  가중치 로드 완료 (일반 + 특권)")
+            self.w1  = cp.array(data["w1"]);  self.b1  = cp.array(data["b1"])
+            self.w2  = cp.array(data["w2"]);  self.b2  = cp.array(data["b2"])
+            self.pw1 = cp.array(data["pw1"]); self.pb1 = cp.array(data["pb1"])
+            self.pw2 = cp.array(data["pw2"]); self.pb2 = cp.array(data["pb2"])
+            print("  MLP 가중치 로드 완료 (일반 + 특권)")
             return True
         except Exception as e:
             print(f"Error loading weights: {e}")
@@ -541,8 +549,7 @@ class MatrixGame:
         while True:
             try:
                 priv_type = int(input("특권 종류 (1/2/3): ")) - 1
-                if priv_type in (0, 1, 2):
-                    break
+                if priv_type in (0, 1, 2): break
             except ValueError:
                 pass
 
@@ -552,8 +559,7 @@ class MatrixGame:
         while True:
             try:
                 scope = int(input("범위 선택 (1/2): ")) - 1
-                if scope in (0, 1):
-                    break
+                if scope in (0, 1): break
             except ValueError:
                 pass
 
@@ -575,14 +581,16 @@ class MatrixGame:
 
         for r in range(1, 6):
             self.current_round = r
+            for s in self.used_cells:
+                s.clear()
             print(f"\n{'='*20} ROUND {r} {'='*20}")
 
             for p in range(self.num_players):
-                if p == 0:  # AI — greedy (평가 모드)
+                if p == 0:
                     for _ in range(r):
-                        self.agent_learner_act(p, self.weights, temperature=0.0)
+                        self.agent_learner_act(p, self._current_mlp(), temperature=0.0)
                     print("[AI] 행동 완료.")
-                elif p == 1:  # Human
+                elif p == 1:
                     print(f"\n[YOUR TURN] 현재 행렬:\n{to_cpu(self.matrices[p])}")
                     for a in range(r):
                         while True:
@@ -591,11 +599,15 @@ class MatrixGame:
                                 row, col, val = int(move[0]), int(move[1]), int(move[2])
                                 if val not in [-1, 1] or not (0 <= row <= 2 and 0 <= col <= 2):
                                     raise ValueError
+                                if (row, col) in self.used_cells[p]:
+                                    print("  이미 이번 라운드에 사용한 칸입니다. 다른 칸을 선택하세요.")
+                                    continue
                                 self.matrices[p][row, col] += val
+                                self.used_cells[p].add((row, col))
                                 break
                             except Exception:
                                 print("  형식 오류. 행(0-2) 열(0-2) 값(-1 또는 1)")
-                else:  # Random bots
+                else:
                     for _ in range(r):
                         self.agent_random(p)
 
@@ -609,7 +621,7 @@ class MatrixGame:
                 labels = {0: "AI(T1)", 1: "YOU(T2)"}
                 print(f"\n라운드 승자: {labels.get(winner, f'Bot(T{winner+1})')}")
                 if winner == 0:
-                    _, priv_a = self.agent_learner_privilege(winner, temperature=0.0)
+                    _, _, priv_a = self.agent_learner_privilege(winner, temperature=0.0)
                     pt    = priv_a // 2
                     scope = priv_a % 2
                     if scope == 0:
@@ -645,7 +657,7 @@ class MatrixGame:
 
 if __name__ == "__main__":
     game = MatrixGame()
-    print("=== Evo-Matrix AI Engine (Pure RL) ===")
+    print("=== Evo-Matrix AI Engine v3.0 (MLP + League) ===")
     print("1. 대전 테스트 (AI vs 인간)")
     print("2. 학습 (30,000 에피소드)")
 
