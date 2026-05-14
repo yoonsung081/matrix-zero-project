@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Battle: Gen3 vs My AI</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:#09090b;color:#eee;font-family:'Segoe UI',system-ui,sans-serif;font-size:11px;height:100vh;overflow:hidden;}
+.app{display:grid;grid-template-columns:1fr 240px;grid-template-rows:48px 1fr 160px;height:100vh;gap:4px;padding:4px;}
+header{grid-column:1/-1;background:#16161a;border:1px solid #333;border-radius:4px;display:flex;align-items:center;gap:12px;padding:0 14px;}
+header h1{font-size:0.85rem;color:#00ffcc;letter-spacing:.08em;}
+.sep{width:1px;height:22px;background:#333;flex-shrink:0;}
+.hd-round{font-size:0.75rem;font-weight:bold;color:#ffd700;padding:3px 8px;background:#1a1800;border:1px solid #3a3000;border-radius:3px;}
+.hd-status{font-size:0.68rem;color:#888;}
+.speed-btn{padding:4px 10px;border:1px solid #444;background:#222;color:#aaa;border-radius:3px;cursor:pointer;font-size:0.65rem;}
+.speed-btn:hover{border-color:#00ffcc;color:#00ffcc;}
+.start-btn{padding:5px 16px;background:#003a2a;border:2px solid #00ffcc;color:#00ffcc;border-radius:4px;cursor:pointer;font-size:0.72rem;font-weight:bold;}
+.start-btn:hover{background:#00ffcc;color:#000;}
+.start-btn:disabled{opacity:.4;cursor:default;}
+.models-badge{margin-left:auto;display:flex;gap:6px;align-items:center;}
+.badge{padding:2px 8px;border-radius:10px;font-size:0.58rem;font-weight:bold;}
+.badge.gen3{background:rgba(255,107,107,.15);border:1px solid #ff6b6b;color:#ff6b6b;}
+.badge.myai{background:rgba(0,255,204,.12);border:1px solid #00ffcc;color:#00ffcc;}
+.badge.bot{background:rgba(100,100,100,.15);border:1px solid #444;color:#666;}
+
+.arena{display:grid;grid-template-columns:repeat(3,1fr);grid-template-rows:repeat(2,1fr);gap:4px;min-height:0;}
+.team-card{background:#1c1c21;border:2px solid #333;border-radius:6px;padding:6px;display:flex;flex-direction:column;min-height:0;transition:border-color .2s,background .2s;}
+.team-card.gen3{border-color:#ff6b6b;background:#1e1414;}
+.team-card.myai{border-color:#00ffcc;background:#0d1e1c;}
+.team-card.winner-glow{box-shadow:0 0 12px rgba(255,215,0,.5);border-color:#ffd700!important;}
+.team-card.priv-glow{animation:priv-pulse .4s ease-in-out 3;}
+@keyframes priv-pulse{0%,100%{box-shadow:none}50%{box-shadow:0 0 16px rgba(255,165,0,.8);}}
+.t-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:3px;}
+.t-name{font-size:0.6rem;font-weight:bold;letter-spacing:.04em;}
+.t-name.gen3{color:#ff6b6b;}
+.t-name.myai{color:#00ffcc;}
+.t-name.bot{color:#555;}
+.t-score{font-size:0.62rem;font-weight:bold;font-family:monospace;}
+.matrix-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:2px;flex:1;min-height:0;}
+.cell{background:#111;border:1px solid #222;border-radius:2px;display:flex;align-items:center;justify-content:center;font-size:0.9rem;font-weight:bold;font-family:monospace;transition:background .15s,color .15s,transform .1s;}
+.cell.flash-plus{background:#003a2a!important;color:#00ffcc!important;transform:scale(1.12);}
+.cell.flash-minus{background:#3a0010!important;color:#ff6b6b!important;transform:scale(1.12);}
+.cell.diag{color:#444;}
+.t-det{font-size:0.52rem;font-family:monospace;color:#444;margin-top:3px;display:flex;justify-content:space-between;}
+.t-det .val{color:#888;}
+.t-rank{font-size:0.55rem;font-weight:bold;padding:1px 4px;border-radius:2px;background:#111;color:#555;}
+
+.side-panel{display:flex;flex-direction:column;gap:4px;min-height:0;}
+.scoreboard{background:#16161a;border:1px solid #333;border-radius:4px;padding:6px;flex-shrink:0;}
+.sb-title{font-size:0.52rem;color:#444;font-weight:bold;text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px;}
+.sb-row{display:flex;justify-content:space-between;align-items:center;padding:2px 0;border-bottom:1px solid #1e1e1e;}
+.sb-row:last-child{border:none;}
+.sb-name{font-size:0.6rem;}
+.sb-pts{font-size:0.6rem;font-weight:bold;font-family:monospace;color:#ffd700;}
+
+.log-box{background:#16161a;border:1px solid #333;border-radius:4px;padding:6px;flex:1;overflow-y:auto;min-height:0;}
+.log-box::-webkit-scrollbar{width:3px;}
+.log-box::-webkit-scrollbar-thumb{background:#333;}
+.log-entry{font-size:0.6rem;padding:1px 0;border-bottom:1px solid #1a1a1a;line-height:1.4;}
+.log-entry.sys{color:#555;}
+.log-entry.gen3{color:#ff8888;}
+.log-entry.myai{color:#00ffcc;}
+.log-entry.win{color:#ffd700;font-weight:bold;}
+.log-entry.priv{color:#ff9900;}
+.log-entry.bot{color:#444;}
+
+.analysis{grid-column:1/-1;background:#16161a;border:1px solid #333;border-radius:4px;padding:8px;display:flex;gap:12px;overflow:hidden;}
+.an-section{flex-shrink:0;}
+.an-title{font-size:0.52rem;color:#444;font-weight:bold;text-transform:uppercase;letter-spacing:.06em;margin-bottom:6px;}
+.stat-bars{display:flex;flex-direction:column;gap:4px;width:220px;}
+.stat-row{display:flex;align-items:center;gap:6px;}
+.stat-label{font-size:0.58rem;width:60px;flex-shrink:0;}
+.stat-bar-bg{flex:1;height:10px;background:#222;border-radius:3px;overflow:hidden;}
+.stat-bar-fill{height:100%;border-radius:3px;transition:width .5s;}
+.stat-val{font-size:0.58rem;font-weight:bold;width:34px;text-align:right;flex-shrink:0;}
+.an-sep{width:1px;background:#2a2a2a;align-self:stretch;flex-shrink:0;}
+.game-log-table{font-size:0.55rem;font-family:monospace;}
+.game-log-table td{padding:1px 5px;border-bottom:1px solid #1a1a1a;}
+.game-log-table .w-gen3{color:#ff6b6b;font-weight:bold;}
+.game-log-table .w-myai{color:#00ffcc;font-weight:bold;}
+.game-log-table .w-bot{color:#666;}
+.vs-badge{font-size:0.75rem;font-weight:bold;padding:3px 8px;border-radius:3px;margin-right:4px;}
+.an-nums{display:flex;flex-direction:column;gap:6px;width:130px;}
+.an-num-row{display:flex;justify-content:space-between;align-items:center;}
+.an-num-label{font-size:0.55rem;color:#555;}
+.an-num-val{font-size:0.7rem;font-weight:bold;}
+.pending{color:#333;font-style:italic;}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+  <h1>⚔ AI BATTLE ARENA</h1>
+  <div class="sep"></div>
+  <div class="hd-round" id="hd-round">READY</div>
+  <div class="hd-status" id="hd-status">두 AI 모델의 대결을 시작하세요</div>
+  <div class="sep"></div>
+  <button class="start-btn" id="btn-start" onclick="startBattle()">▶ 시작</button>
+  <button class="speed-btn" onclick="toggleSpeed()">속도: <span id="speed-label">보통</span></button>
+  <div class="models-badge">
+    <span class="badge gen3">T1 Gen3 (현형)</span>
+    <span style="color:#444;font-size:.6rem">vs</span>
+    <span class="badge myai">T2 My AI</span>
+    <span class="badge bot">T3~T6 Bot</span>
+  </div>
+</header>
+
+<div class="arena" id="arena"></div>
+
+<div class="side-panel">
+  <div class="scoreboard">
+    <div class="sb-title">Ranking</div>
+    <div id="scoreboard-body"></div>
+  </div>
+  <div class="log-box" id="log-box"></div>
+</div>
+
+<div class="analysis">
+  <div class="an-section">
+    <div class="an-title">통계 분석 (N게임)</div>
+    <div class="stat-bars">
+      <div class="stat-row">
+        <span class="stat-label" style="color:#ff6b6b">Gen3</span>
+        <div class="stat-bar-bg"><div class="stat-bar-fill" id="bar-gen3" style="width:0%;background:#ff6b6b;"></div></div>
+        <span class="stat-val" id="val-gen3" style="color:#ff6b6b">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label" style="color:#00ffcc">My AI</span>
+        <div class="stat-bar-bg"><div class="stat-bar-fill" id="bar-myai" style="width:0%;background:#00ffcc;"></div></div>
+        <span class="stat-val" id="val-myai" style="color:#00ffcc">—</span>
+      </div>
+      <div class="stat-row">
+        <span class="stat-label" style="color:#555">Bots 평균</span>
+        <div class="stat-bar-bg"><div class="stat-bar-fill" id="bar-bot" style="width:0%;background:#555;"></div></div>
+        <span class="stat-val" id="val-bot" style="color:#666">—</span>
+      </div>
+    </div>
+  </div>
+  <div class="an-sep"></div>
+  <div class="an-section">
+    <div class="an-title">세부 지표</div>
+    <div class="an-nums">
+      <div class="an-num-row"><span class="an-num-label">Gen3 생존율</span><span class="an-num-val" id="surv-gen3">—</span></div>
+      <div class="an-num-row"><span class="an-num-label">My AI 생존율</span><span class="an-num-val" id="surv-myai">—</span></div>
+      <div class="an-num-row"><span class="an-num-label">Gen3 라운드승</span><span class="an-num-val" id="rw-gen3">—</span></div>
+      <div class="an-num-row"><span class="an-num-label">My AI 라운드승</span><span class="an-num-val" id="rw-myai">—</span></div>
+      <div class="an-num-row"><span class="an-num-label">시뮬레이션</span><span class="an-num-val" id="sim-count">0 / 100</span></div>
+    </div>
+  </div>
+  <div class="an-sep"></div>
+  <div class="an-section" style="flex:1;min-width:0;">
+    <div class="an-title">게임 결과 로그</div>
+    <table class="game-log-table"><tbody id="game-log-table"></tbody></table>
+  </div>
+</div>
+</div>
+
+<script>
+// ─── Global weights ───────────────────────────────────────────
+let gen3W = null, myW = null;
+let battleRunning = false;
+let speedMs = 350;
+const SPEED_STEPS = [{ms:700,label:'느리게'},{ms:350,label:'보통'},{ms:140,label:'빠르게'},{ms:30,label:'최대속도'}];
+let speedIdx = 1;
+
+async function loadWeights() {
+    try {
+        const [r1, r2] = await Promise.all([
+            fetch('gen3_weights.json'),
+            fetch('strategy_weights.json')
+        ]);
+        gen3W = await r1.json();
+        myW   = await r2.json();
+        log('sys', '✔ 두 AI 모델 가중치 로드 완료.');
+    } catch(e) {
+        log('sys', '⚠ 가중치 로드 실패 — 휴리스틱 모드로 대체.');
+    }
+}
+
+function toggleSpeed() {
+    speedIdx = (speedIdx+1) % SPEED_STEPS.length;
+    speedMs = SPEED_STEPS[speedIdx].ms;
+    document.getElementById('speed-label').textContent = SPEED_STEPS[speedIdx].label;
+}
+
+// ─── Math helpers ─────────────────────────────────────────────
+function det(m){ return m[0]*(m[4]*m[8]-m[5]*m[7])-m[1]*(m[3]*m[8]-m[5]*m[6])+m[2]*(m[3]*m[7]-m[4]*m[6]); }
+function calcX(mats){ return [0,1,2].map(i=>Math.floor(mats.reduce((s,m)=>s+m[i*4],0)/6)); }
+function axSum(m,x){ return [0,1,2].map(r=>[0,1,2].map(c=>m[r*3+c]*x[c]).reduce((a,b)=>a+b,0)).reduce((a,b)=>a+b,0); }
+function score(m,x,rnd){ return rnd<=2 ? axSum(m,x) : det(m); }
+function sleep(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+// ─── Gen3 inference ───────────────────────────────────────────
+function gen3Obs(tIdx, matrices, xVec, rnd, isPriv) {
+    const obs = [...matrices[tIdx]];
+    for(let p=0;p<6;p++){
+        if(p===tIdx) continue;
+        const m=[...matrices[p]]; m[0]=0; m[4]=0; m[8]=0; // mask diagonal
+        obs.push(...m);
+    }
+    obs.push(...xVec, rnd, isPriv?1:0);
+    return obs; // len 59
+}
+
+function gen3Fwd(obs) {
+    if(!gen3W) return new Array(120).fill(0);
+    const h1 = gen3W.pn_b1.map((b,j)=>{let s=b; for(let i=0;i<59;i++) s+=obs[i]*gen3W.pn_w1[j][i]; return Math.tanh(s);});
+    const h2 = gen3W.pn_b2.map((b,j)=>{let s=b; for(let i=0;i<64;i++) s+=h1[i]*gen3W.pn_w2[j][i]; return Math.tanh(s);});
+    return gen3W.act_b.map((b,j)=>{let s=b; for(let i=0;i<64;i++) s+=h2[i]*gen3W.act_w[j][i]; return s;});
+}
+
+function gen3Mask(usedIdx, isPriv) {
+    const m = new Array(120).fill(false);
+    if(isPriv){ for(let i=18;i<120;i++) m[i]=true; }
+    else { for(let i=0;i<18;i++) if(!usedIdx.has(Math.floor(i/2))) m[i]=true; }
+    return m;
+}
+
+function gen3Pick(obs, mask) {
+    const logits = gen3Fwd(obs).map((l,i)=>mask[i]?l:-Infinity);
+    return logits.indexOf(Math.max(...logits));
+}
+
+function gen3DecodePriv(actIdx) {
+    let p = actIdx-18;
+    const scope = p%2===0 ? 'self' : 'others';
+    p = Math.floor(p/2);
+    const pairs3 = [[0,1],[0,2],[1,2]];
+    if(p<3)  return {cmd:'swap_col',scope,args:pairs3[p]};  p-=3;
+    if(p<3)  return {cmd:'swap_row',scope,args:pairs3[p]};  p-=3;
+    if(p<9)  return {cmd:'zero',scope,args:[Math.floor(p/3),p%3]};  p-=9;
+    const pairs=[]; for(let i=0;i<9;i++) for(let j=i+1;j<9;j++) pairs.push([i,j]);
+    return {cmd:'swap_elem',scope,args:pairs[p]};
+}
+
+// ─── My model inference ───────────────────────────────────────
+function myObs(tIdx, matrices, xVec, rnd) {
+    const feat = new Array(30).fill(0);
+    for(let i=0;i<9;i++) feat[i]=matrices[tIdx][i];
+    for(let i=0;i<3;i++) feat[9+i]=xVec[i];
+    feat[12]=rnd;
+    const scores=matrices.map(mm=>score(mm,xVec,rnd));
+    const ms=Math.max(1e-8,...scores.map(Math.abs));
+    for(let i=0;i<6;i++) feat[13+i]=scores[i]/ms;
+    const dets=matrices.map(mm=>det(mm));
+    const md=Math.max(1e-8,...dets.map(Math.abs));
+    for(let i=0;i<6;i++) feat[19+i]=dets[i]/md;
+    feat[25]=scores.filter(s=>s>scores[tIdx]).length/5;
+    feat[26]=1.0;
+    return feat;
+}
+
+function myFwd(feat, W1, B1, W2, B2) {
+    const h=B1.map((b,j)=>{let s=b; for(let i=0;i<feat.length;i++) s+=feat[i]*W1[i][j]; return s>0?s:0;});
+    return B2.map((b,j)=>{let s=b; for(let i=0;i<h.length;i++) s+=h[i]*W2[i][j]; return s;});
+}
+
+function myPick(tIdx, matrices, xVec, rnd, usedIdx) {
+    let logits = myW
+        ? myFwd(myObs(tIdx,matrices,xVec,rnd), myW.w1, myW.b1, myW.w2, myW.b2)
+        : heuristicLogits(matrices[tIdx], xVec, rnd);
+    for(const idx of usedIdx){ logits[idx*2]=-1e9; logits[idx*2+1]=-1e9; }
+    const a=logits.indexOf(Math.max(...logits));
+    return {cellIdx:Math.floor(a/2), delta:a%2===0?1:-1};
+}
+
+function myPriv(tIdx, matrices, xVec, rnd) {
+    if(!myW) return applyBestPriv(tIdx,matrices,xVec,rnd,'swap_row','self');
+    const feat=myObs(tIdx,matrices,xVec,rnd);
+    const pl=myFwd(feat,myW.pw1,myW.pb1,myW.pw2,myW.pb2);
+    const a=pl.indexOf(Math.max(...pl));
+    const types=['swap_row','swap_col','zero','swap_elements'];
+    const privType=types[Math.floor(a/2)];
+    const scope=a%2===0?'self':'others';
+    const targets=scope==='self'?[tIdx]:[...Array(6).keys()].filter(i=>i!==tIdx);
+    for(const t of targets) applyBestPriv(t,matrices,xVec,rnd,privType,scope);
+    return {privType,scope};
+}
+
+function applyBestPriv(tIdx,matrices,xVec,rnd,privType,scope) {
+    const minimize = scope==='others';
+    const sf=m=>score(m,xVec,rnd);
+    let m=[...matrices[tIdx]];
+    if(privType==='swap_row'){
+        let best={a:0,b:1,s:minimize?Infinity:-Infinity};
+        for(let a=0;a<3;a++) for(let b=a+1;b<3;b++){
+            const n=[...m]; for(let c=0;c<3;c++){let t=n[a*3+c];n[a*3+c]=n[b*3+c];n[b*3+c]=t;}
+            const s=sf(n); if(minimize?s<best.s:s>best.s) best={a,b,s};
+        }
+        for(let c=0;c<3;c++){let t=m[best.a*3+c];m[best.a*3+c]=m[best.b*3+c];m[best.b*3+c]=t;}
+    } else if(privType==='swap_col'){
+        let best={a:0,b:1,s:minimize?Infinity:-Infinity};
+        for(let a=0;a<3;a++) for(let b=a+1;b<3;b++){
+            const n=[...m]; for(let r=0;r<3;r++){let t=n[r*3+a];n[r*3+a]=n[r*3+b];n[r*3+b]=t;}
+            const s=sf(n); if(minimize?s<best.s:s>best.s) best={a,b,s};
+        }
+        for(let r=0;r<3;r++){let t=m[r*3+best.a];m[r*3+best.a]=m[r*3+best.b];m[r*3+best.b]=t;}
+    } else if(privType==='zero'){
+        let best={idx:0,s:minimize?Infinity:-Infinity};
+        for(let i=0;i<9;i++) if(m[i]!==0){const n=[...m];n[i]=0;const s=sf(n);if(minimize?s<best.s:s>best.s)best={idx:i,s};}
+        m[best.idx]=0;
+    } else {
+        let best={a:0,b:1,s:minimize?Infinity:-Infinity};
+        for(let a=0;a<9;a++) for(let b=a+1;b<9;b++){
+            const n=[...m]; let tmp=n[a];n[a]=n[b];n[b]=tmp; const s=sf(n);
+            if(minimize?s<best.s:s>best.s) best={a,b,s};
+        }
+        let tmp=m[best.a];m[best.a]=m[best.b];m[best.b]=tmp;
+    }
+    matrices[tIdx]=m;
+}
+
+function applyGen3Priv(winnerIdx, privDec, matrices) {
+    const targets = privDec.scope==='self' ? [winnerIdx] : [...Array(6).keys()].filter(i=>i!==winnerIdx);
+    for(const t of targets){
+        const m=[...matrices[t]];
+        if(privDec.cmd==='swap_col'){
+            const [c1,c2]=privDec.args; for(let r=0;r<3;r++){let tmp=m[r*3+c1];m[r*3+c1]=m[r*3+c2];m[r*3+c2]=tmp;}
+        } else if(privDec.cmd==='swap_row'){
+            const [r1,r2]=privDec.args; for(let c=0;c<3;c++){let tmp=m[r1*3+c];m[r1*3+c]=m[r2*3+c];m[r2*3+c]=tmp;}
+        } else if(privDec.cmd==='zero'){
+            const [r,c]=privDec.args; m[r*3+c]=0;
+        } else {
+            const [i1,i2]=privDec.args; let tmp=m[i1];m[i1]=m[i2];m[i2]=tmp;
+        }
+        matrices[t]=m;
+    }
+}
+
+// ─── Heuristic bot ────────────────────────────────────────────
+function heuristicLogits(myM, xVec, rnd) {
+    const logits=new Array(18).fill(0);
+    for(let i=0;i<9;i++) for(let di=0;di<2;di++){
+        const d=di===0?1:-1, n=[...myM]; n[i]+=d;
+        logits[i*2+di]=score(n,xVec,rnd);
+    }
+    return logits;
+}
+
+function botPick(tIdx, matrices, xVec, rnd, usedIdx, temp=0.3) {
+    const logits=heuristicLogits(matrices[tIdx],xVec,rnd);
+    for(const idx of usedIdx){ logits[idx*2]=-1e9; logits[idx*2+1]=-1e9; }
+    // small temperature for bots
+    const mx=Math.max(...logits.filter(l=>l>-1e8));
+    const exps=logits.map(l=>l>-1e8?Math.exp((l-mx)/temp):0);
+    const sum=exps.reduce((a,b)=>a+b,0);
+    const probs=exps.map(e=>e/sum);
+    let r=Math.random(),cum=0;
+    for(let i=0;i<probs.length;i++){cum+=probs[i];if(r<cum) return {cellIdx:Math.floor(i/2),delta:i%2===0?1:-1};}
+    return {cellIdx:0,delta:1};
+}
+
+function botPriv(winnerIdx, matrices, xVec, rnd) {
+    const types=['swap_row','swap_col','zero','swap_elements'];
+    const privType=types[Math.floor(Math.random()*4)];
+    const scope=Math.random()<0.5?'self':'others';
+    const targets=scope==='self'?[winnerIdx]:[...Array(6).keys()].filter(i=>i!==winnerIdx);
+    for(const t of targets) applyBestPriv(t,matrices,xVec,rnd,privType,scope);
+    return {privType,scope};
+}
+
+// ─── Find winner ─────────────────────────────────────────────
+function findWinner(matrices,xVec,rnd){
+    const scores=matrices.map((m,i)=>({s:score(m,xVec,rnd),i})).sort((a,b)=>b.s-a.s);
+    for(let k=0;k<Math.min(3,6);k++){
+        const s=scores[k].s;
+        if(scores.filter(x=>x.s===s).length===1) return scores.find(x=>x.s===s).i;
+    }
+    return null;
+}
+
+function finalWinner(matrices,xVec){
+    const surv=matrices.map((m,i)=>({i,d:det(m),ax:axSum(m,xVec)})).filter(p=>p.d!==0);
+    if(!surv.length) return -1;
+    surv.sort((a,b)=>b.ax-a.ax||Math.abs(b.d)-Math.abs(a.d));
+    return surv[0].i;
+}
+
+// ─── DOM helpers ──────────────────────────────────────────────
+const TEAM_TYPES = ['gen3','myai','bot','bot','bot','bot'];
+const TEAM_NAMES = ['T1 Gen3','T2 My AI','T3 Bot','T4 Bot','T5 Bot','T6 Bot'];
+const TEAM_BOTS  = [false, false, true, true, true, true];
+
+function buildArena() {
+    const arena = document.getElementById('arena');
+    arena.innerHTML = '';
+    for(let t=0;t<6;t++){
+        const card=document.createElement('div');
+        card.className=`team-card ${TEAM_TYPES[t]}`;
+        card.id=`card-${t}`;
+        card.innerHTML=`
+            <div class="t-header">
+                <span class="t-name ${TEAM_TYPES[t]}">${TEAM_NAMES[t]}</span>
+                <span class="t-score" id="score-${t}">Ax: 0</span>
+                <span class="t-rank" id="rank-${t}">#${t+1}</span>
+            </div>
+            <div class="matrix-grid" id="matrix-${t}"></div>
+            <div class="t-det"><span>det: <span class="val" id="det-${t}">0</span></span><span>Ax: <span class="val" id="ax-${t}">0</span></span></div>`;
+        const grid=card.querySelector('.matrix-grid');
+        for(let i=0;i<9;i++){
+            const cell=document.createElement('div');
+            cell.className='cell'+(t>0&&[0,4,8].includes(i)?' diag':'');
+            cell.id=`c${t}-${i}`; cell.textContent='0';
+            grid.appendChild(cell);
+        }
+        arena.appendChild(card);
+    }
+}
+
+function renderMatrices(matrices, xVec, rnd) {
+    const scores=matrices.map((m,i)=>score(m,xVec,rnd));
+    const ranked=[...scores.map((s,i)=>({s,i}))].sort((a,b)=>b.s-a.s);
+    for(let t=0;t<6;t++){
+        for(let i=0;i<9;i++) document.getElementById(`c${t}-${i}`).textContent=matrices[t][i];
+        const d=det(matrices[t]), ax=axSum(matrices[t],xVec);
+        document.getElementById(`det-${t}`).textContent=d;
+        document.getElementById(`ax-${t}`).textContent=ax.toFixed(1);
+        document.getElementById(`score-${t}`).textContent=rnd<=2?`Ax:${ax.toFixed(1)}`:`det:${d}`;
+    }
+    // ranks
+    ranked.forEach((r,rank)=>{document.getElementById(`rank-${r.i}`).textContent=`#${rank+1}`;});
+    // scoreboard
+    const sb=document.getElementById('scoreboard-body');
+    sb.innerHTML=ranked.map((r,rank)=>`<div class="sb-row"><span class="sb-name" style="color:${r.i===0?'#ff6b6b':r.i===1?'#00ffcc':'#444'}">${rank+1}. ${TEAM_NAMES[r.i]}</span><span class="sb-pts">${r.s.toFixed(1)}</span></div>`).join('');
+}
+
+function flashCell(t, cellIdx, sign) {
+    const el=document.getElementById(`c${t}-${cellIdx}`);
+    el.classList.add(sign>0?'flash-plus':'flash-minus');
+    setTimeout(()=>el.classList.remove('flash-plus','flash-minus'),300);
+}
+
+function log(type,msg) {
+    const box=document.getElementById('log-box');
+    const d=document.createElement('div'); d.className=`log-entry ${type}`; d.textContent=msg;
+    box.prepend(d);
+}
+
+// ─── Animated Battle ──────────────────────────────────────────
+async function runAnimatedGame() {
+    const matrices=Array.from({length:6},()=>new Array(9).fill(0));
+    const roundWins=new Array(6).fill(0);
+    buildArena();
+    renderMatrices(matrices,[0,0,0],1);
+
+    for(let rnd=1;rnd<=5;rnd++){
+        document.getElementById('hd-round').textContent=`ROUND ${rnd}`;
+        document.getElementById('hd-status').textContent=`라운드 ${rnd} — 각 팀 ${rnd}회 행동`;
+        log('sys',`═══ ROUND ${rnd} 시작 ═══`);
+        const usedIdx=Array.from({length:6},()=>new Set());
+
+        for(let act=0;act<rnd;act++){
+            // all teams act
+            for(let t=0;t<6;t++){
+                const xVec=calcX(matrices);
+                let cellIdx, delta;
+                if(t===0){
+                    const obs=gen3Obs(t,matrices,xVec,rnd,false);
+                    const mask=gen3Mask(usedIdx[t],false);
+                    const a=gen3Pick(obs,mask);
+                    cellIdx=Math.floor(a/2); delta=a%2===0?1:-1;
+                } else if(t===1){
+                    ({cellIdx,delta}=myPick(t,matrices,xVec,rnd,usedIdx[t]));
+                } else {
+                    ({cellIdx,delta}=botPick(t,matrices,xVec,rnd,usedIdx[t]));
+                }
+                matrices[t][cellIdx]+=delta;
+                usedIdx[t].add(cellIdx);
+                const r=Math.floor(cellIdx/3), c=cellIdx%3;
+                const type=TEAM_TYPES[t];
+                log(type,`${TEAM_NAMES[t]} → [${r+1},${c+1}] ${delta>0?'+1':'-1'}`);
+                flashCell(t,cellIdx,delta);
+                if(speedMs>100){const xNow=calcX(matrices);renderMatrices(matrices,xNow,rnd);}
+                await sleep(speedMs*0.6);
+            }
+            if(speedMs<=100){const xNow=calcX(matrices);renderMatrices(matrices,xNow,rnd);}
+            await sleep(speedMs*0.4);
+        }
+
+        // End of round
+        const xVec=calcX(matrices);
+        renderMatrices(matrices,xVec,rnd);
+        const w=findWinner(matrices,xVec,rnd);
+        if(w!==null){
+            roundWins[w]++;
+            const card=document.getElementById(`card-${w}`);
+            card.classList.add('winner-glow');
+            log('win',`🏆 라운드 ${rnd} 승자: ${TEAM_NAMES[w]}`);
+            document.getElementById('hd-status').textContent=`Round ${rnd} 승자: ${TEAM_NAMES[w]} — 특권 발동!`;
+            await sleep(speedMs*1.2);
+            card.classList.remove('winner-glow');
+
+            // Privilege
+            let privDesc='';
+            if(w===0){
+                const obs=gen3Obs(w,matrices,xVec,rnd,true);
+                const mask=gen3Mask(new Set(),true);
+                const a=gen3Pick(obs,mask);
+                const priv=gen3DecodePriv(a);
+                applyGen3Priv(w,priv,matrices);
+                privDesc=`${priv.cmd} (${priv.scope})`;
+            } else if(w===1){
+                const res=myPriv(w,matrices,xVec,rnd);
+                privDesc=`${res.privType} (${res.scope})`;
+            } else {
+                const res=botPriv(w,matrices,xVec,rnd);
+                privDesc=`${res.privType} (${res.scope})`;
+            }
+            log('priv',`⚡ 특권: ${TEAM_NAMES[w]} → ${privDesc}`);
+            card.classList.add('priv-glow');
+            const xAfter=calcX(matrices);
+            renderMatrices(matrices,xAfter,rnd);
+            await sleep(speedMs*1.5);
+            card.classList.remove('priv-glow');
+        } else {
+            log('sys',`라운드 ${rnd}: 공동 1위 — 특권 없음`);
+        }
+        await sleep(speedMs*0.5);
+    }
+
+    // Final
+    const xFinal=calcX(matrices);
+    const fw=finalWinner(matrices,xFinal);
+    const teamDets=matrices.map((m,i)=>({i,d:det(m),ax:axSum(m,xFinal)}));
+    log('win','━━━━━━━━━━━━━━━━━━━━━━━');
+    if(fw>=0){
+        document.getElementById('hd-status').textContent=`🏆 최종 우승: ${TEAM_NAMES[fw]}`;
+        document.getElementById(`card-${fw}`).classList.add('winner-glow');
+        log('win',`🏆🏆 최종 우승: ${TEAM_NAMES[fw]}`);
+    } else {
+        document.getElementById('hd-status').textContent='전원 탈락 (det=0)';
+        log('win','☠ 전원 탈락');
+    }
+    teamDets.forEach(({i,d,ax})=>{
+        const surv=d!==0?'생존':'탈락';
+        log(TEAM_TYPES[i],`${TEAM_NAMES[i]}: det=${d}, Ax=${ax.toFixed(1)} [${surv}]`);
+    });
+    return fw;
+}
+
+// ─── Silent simulation for stats ─────────────────────────────
+function silentGame() {
+    const matrices=Array.from({length:6},()=>new Array(9).fill(0));
+    const roundWins=new Array(6).fill(0);
+
+    for(let rnd=1;rnd<=5;rnd++){
+        const usedIdx=Array.from({length:6},()=>new Set());
+        for(let act=0;act<rnd;act++){
+            for(let t=0;t<6;t++){
+                const xVec=calcX(matrices);
+                let cellIdx, delta;
+                if(t===0){
+                    const obs=gen3Obs(t,matrices,xVec,rnd,false);
+                    const mask=gen3Mask(usedIdx[t],false);
+                    const a=gen3Pick(obs,mask);
+                    cellIdx=Math.floor(a/2); delta=a%2===0?1:-1;
+                } else if(t===1){
+                    ({cellIdx,delta}=myPick(t,matrices,xVec,rnd,usedIdx[t]));
+                } else {
+                    ({cellIdx,delta}=botPick(t,matrices,xVec,rnd,usedIdx[t]));
+                }
+                matrices[t][cellIdx]+=delta;
+                usedIdx[t].add(cellIdx);
+            }
+        }
+        const xVec=calcX(matrices);
+        const w=findWinner(matrices,xVec,rnd);
+        if(w!==null) roundWins[w]++;
+
+        if(w!==null){
+            if(w===0){
+                const obs=gen3Obs(w,matrices,xVec,rnd,true);
+                const mask=gen3Mask(new Set(),true);
+                const a=gen3Pick(obs,mask);
+                applyGen3Priv(w,gen3DecodePriv(a),matrices);
+            } else if(w===1){
+                myPriv(w,matrices,xVec,rnd);
+            } else {
+                botPriv(w,matrices,xVec,rnd);
+            }
+        }
+    }
+    const xFinal=calcX(matrices);
+    return {winner:finalWinner(matrices,xFinal), roundWins, matrices, xFinal};
+}
+
+async function runStats(total=100) {
+    const wins=new Array(6).fill(0);
+    const survived=new Array(6).fill(0);
+    const roundWinsTotal=new Array(6).fill(0);
+    const gameLog=[];
+
+    for(let g=0;g<total;g++){
+        const res=silentGame();
+        if(res.winner>=0) wins[res.winner]++;
+        for(let t=0;t<6;t++){
+            if(det(res.matrices[t])!==0) survived[t]++;
+            roundWinsTotal[t]+=res.roundWins[t];
+        }
+        gameLog.push(res.winner);
+
+        if((g+1)%5===0 || g===total-1) {
+            updateStats(wins,survived,roundWinsTotal,g+1,total,gameLog);
+            await sleep(1);
+        }
+    }
+}
+
+function updateStats(wins,survived,roundWins,done,total,gameLog){
+    document.getElementById('sim-count').textContent=`${done} / ${total}`;
+    if(done===0) return;
+    const botWins=([2,3,4,5].map(i=>wins[i]).reduce((a,b)=>a+b,0))/4;
+    const max=Math.max(wins[0],wins[1],botWins*4,1);
+    const pct=(v,d)=>d>0?(v/d*100).toFixed(1)+'%':'—';
+
+    document.getElementById('bar-gen3').style.width=`${wins[0]/max*100}%`;
+    document.getElementById('bar-myai').style.width=`${wins[1]/max*100}%`;
+    document.getElementById('bar-bot').style.width=`${botWins*4/max*100}%`;
+    document.getElementById('val-gen3').textContent=pct(wins[0],done);
+    document.getElementById('val-myai').textContent=pct(wins[1],done);
+    document.getElementById('val-bot').textContent=pct(botWins,done);
+    document.getElementById('surv-gen3').textContent=pct(survived[0],done);
+    document.getElementById('surv-myai').textContent=pct(survived[1],done);
+    document.getElementById('rw-gen3').textContent=(roundWins[0]/done).toFixed(2)+'/게임';
+    document.getElementById('rw-myai').textContent=(roundWins[1]/done).toFixed(2)+'/게임';
+
+    const tbody=document.getElementById('game-log-table');
+    tbody.innerHTML=gameLog.slice(-20).reverse().map((w,i)=>{
+        const gameNum=done-i;
+        const cls=w===0?'w-gen3':w===1?'w-myai':w<0?'w-bot':' w-bot';
+        const label=w===0?'Gen3':w===1?'My AI':w<0?'전원탈락':`Bot${w+1}`;
+        return `<tr><td style="color:#333">#${gameNum}</td><td class="${cls}">${label}</td></tr>`;
+    }).join('');
+}
+
+// ─── Main ────────────────────────────────────────────────────
+async function startBattle() {
+    if(battleRunning) return;
+    battleRunning=true;
+    document.getElementById('btn-start').disabled=true;
+    document.getElementById('hd-status').textContent='배틀 진행 중...';
+    log('sys','─── 배틀 시작 ───');
+
+    await runAnimatedGame();
+    await sleep(800);
+    log('sys','─── 통계 시뮬레이션 100판 시작 ───');
+    document.getElementById('hd-status').textContent='배틀 완료 — 통계 시뮬레이션 중...';
+    await runStats(100);
+    document.getElementById('hd-status').textContent='✔ 완료';
+    document.getElementById('btn-start').disabled=false;
+    battleRunning=false;
+}
+
+buildArena();
+loadWeights();
+</script>
+</body>
+</html>
