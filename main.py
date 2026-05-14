@@ -40,7 +40,7 @@ def gen3_act(matrices, t_idx, x_vec, rnd, is_priv, used_cells):
     return int(np.argmax(logits))
 
 # ── Hyperparameters ───────────────────────────────────────────────
-FEAT_DIM       = 30
+FEAT_DIM       = 59
 HIDDEN_DIM     = 128
 ACT_DIM        = 18
 PRIV_DIM       = 8
@@ -168,18 +168,20 @@ class MatrixGame:
         return 1.0 if self.get_round_winner()==p else 0.0
 
     # ── Feature ───────────────────────────────────────────────────
-    def _feat(self, p):
-        f = np.zeros(FEAT_DIM, np.float32)
-        f[0:9]   = self.matrices[p].flatten().astype(np.float32)
-        f[9:12]  = self.x_vector.flatten().astype(np.float32)
-        f[12]    = float(self.current_round)
-        sc = np.array([self.get_score(i) for i in range(6)], np.float32)
-        f[13:19] = sc / (np.max(np.abs(sc)) + 1e-8)
-        dt = np.array([float(round(np.linalg.det(self.matrices[i].astype(float))))
-                       for i in range(6)], np.float32)
-        f[19:25] = dt / (np.max(np.abs(dt)) + 1e-8)
-        f[25]    = float(sum(1 for s in sc if s > sc[p])) / 5.0
-        f[26]    = 1.0
+    def _feat(self, p, is_priv=False):
+        # Gen3와 동일한 59-dim 관측: 자신9 + 상대5×9(대각0) + x3 + round1 + is_priv1
+        f = np.zeros(59, np.float32)
+        f[0:9] = self.matrices[p].flatten().astype(np.float32)
+        idx = 9
+        for q in range(6):
+            if q == p: continue
+            m = self.matrices[q].copy().astype(np.float32)
+            m[0,0] = m[1,1] = m[2,2] = 0.0
+            f[idx:idx+9] = m.flatten()
+            idx += 9
+        f[54:57] = self.x_vector.flatten().astype(np.float32)
+        f[57]    = float(self.current_round)
+        f[58]    = 1.0 if is_priv else 0.0
         return f
 
     # ── Forward / sample ──────────────────────────────────────────
@@ -206,7 +208,7 @@ class MatrixGame:
         else:
             w1,b1,wp,bp,wv,bv = self.pw1,self.pb1,self.pw_pi,self.pb_pi,self.pw_v,self.pb_v
             ad = PRIV_DIM
-        feat = self._feat(p)
+        feat = self._feat(p, is_priv=not normal)
         logits, _, value = self._fwd(feat, w1,b1,wp,bp,wv,bv)
         mask = np.ones(ad, np.float32)
         if normal:
@@ -429,7 +431,7 @@ class MatrixGame:
     def run_simulation(self, num_episodes=1_200_000):
         has_g3 = load_gen3_weights()
         print(f"\n학습 시작: {num_episodes:,}회  Gen3: {'ON' if has_g3 else 'OFF'}")
-        print("구성: Random 20% / 리그 25% / OldSelf 45% / Gen3 10%\n")
+        print("구성: Random 15% / 리그 20% / OldSelf 35% / Gen3 30%\n")
 
         buf_n = RolloutBuffer(ROLLOUT_NORMAL)
         buf_p = RolloutBuffer(ROLLOUT_PRIV)
@@ -448,9 +450,9 @@ class MatrixGame:
                 opponents = []
                 for _ in range(5):
                     rv = random.random()
-                    if   rv < 0.20: opponents.append("Random")
-                    elif rv < 0.45 and len(self.learner_history)>1: opponents.append("League")
-                    elif rv < 0.90: opponents.append("OldSelf")
+                    if   rv < 0.15: opponents.append("Random")
+                    elif rv < 0.35 and len(self.learner_history)>1: opponents.append("League")
+                    elif rv < 0.70: opponents.append("OldSelf")
                     else:           opponents.append("Gen3")
 
                 self.reset_game()
