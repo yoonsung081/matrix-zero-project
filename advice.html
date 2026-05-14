@@ -17,6 +17,7 @@
         .app-container { display: grid; grid-template-columns: 170px 1fr 180px; grid-template-rows: 32px 1fr; height: 100vh; gap: 3px; padding: 3px; }
         header { grid-column: 1 / -1; background: #16161a; display: flex; align-items: center; padding: 0 10px; gap: 8px; border: 1px solid #333; border-radius: 4px; }
         h1 { font-size: 0.8rem; color: #00ffcc; white-space: nowrap; }
+        .hud-item { padding: 2px 6px; border-radius: 10px; background: #222; border: 1px solid #444; font-weight: bold; font-size: 0.6rem; }
         .sidebar, .analysis-bar { background: #16161a; border-radius: 4px; padding: 5px; display: flex; flex-direction: column; gap: 3px; border: 1px solid #333; overflow: hidden; }
         .main-content { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); gap: 3px; height: 100%; min-width: 0; }
         .team-card { background: #1c1c21; border: 1px solid #333; border-radius: 4px; padding: 3px; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
@@ -24,11 +25,12 @@
         .matrix-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; flex-grow: 1; }
         .matrix-grid input { width: 100%; height: 100%; text-align: center; background: #000; color: #fff; border: 1px solid #222; font-size: 0.8rem; font-weight: bold; }
         .det-box { margin-top: 2px; padding: 1px 3px; background: rgba(0,0,0,0.4); border-radius: 2px; display: flex; justify-content: space-between; font-size: 0.55rem; font-family: monospace; }
-        .btn { width: 100%; padding: 4px; border-radius: 3px; border: none; cursor: pointer; font-weight: bold; font-size: 0.65rem; }
+        .btn { width: 100%; padding: 4px; border-radius: 3px; border: none; cursor: pointer; font-weight: bold; font-size: 0.65rem; transition: 0.1s; }
         .btn-page { background: #222; border: 1px solid #444; color: #ff6b6b; margin-top: auto; text-decoration: none; text-align: center; line-height: 1.5; }
         
-        .rec-set { background: #1a1a1d; border-left: 2px solid #0cf; padding: 5px; margin-bottom: 6px; border-radius: 2px; }
-        .rec-header { font-weight: bold; color: #ffd700; margin-bottom: 3px; border-bottom: 1px solid #333; padding-bottom: 2px; }
+        .rec-set { background: #1a1a1d; border-left: 2px solid #0cf; padding: 5px; margin-bottom: 6px; border-radius: 2px; transition: background 0.2s; }
+        .rec-set:hover { background: #25252a; }
+        .rec-header { font-weight: bold; color: #ffd700; margin-bottom: 3px; border-bottom: 1px solid #333; padding-bottom: 2px; font-size: 0.65rem; }
         .rec-item { font-size: 0.6rem; color: #ccc; margin-bottom: 1px; }
         
         select { width: 100%; background: #222; color: #eee; border: 1px solid #444; padding: 3px; font-size: 0.6rem; border-radius: 3px; }
@@ -36,14 +38,14 @@
         .diag-mask { 
             position: absolute; inset: 0; background: #111; border: 1px solid #222; 
             display: flex !important; align-items: center; justify-content: center; 
-            color: #444; font-size: 1.1rem; pointer-events: none; z-index: 10; 
+            color: #ff8c00; font-size: 1.1rem; pointer-events: none; z-index: 10; font-weight: bold;
         }
     </style>
 </head>
 <body>
 <div class="app-container">
     <header>
-        <h1>STRATEGY ASSISTANT (N-Action Sets)</h1>
+        <h1>STRATEGY ASSISTANT (Interactive)</h1>
         <div id="hud-x" style="font-size:0.6rem; background:#222; padding:2px 8px; border-radius:10px; color:#ffd700">X=Est.</div>
         <div style="margin-left:auto; font-weight:bold; color:#0cf; font-size:0.65rem;">ADVICE MODE</div>
     </header>
@@ -105,65 +107,70 @@
 
         const ranking = visibleMats.map((m,i)=>({i, s: round<=2?axSum(m,x):calculateDet(m)})).sort((a,b)=>b.s-a.s);
         let h = `<div style="font-size:0.6rem; color:#444;">EST. RANK</div>`;
-        ranking.forEach((rk, rank) => { h += `<div style="display:flex; justify-content:space-between; padding:2px 0; border-bottom:1px solid #222; ${rk.i===focusIdx?'color:#0cf;':''}"><span>${rank+1}위 T${rk.i+1}</span><span>${rk.s.toFixed(1)}</span></div>`; });
+        ranking.forEach((rk, rank) => { h += `<div style="display:flex; justify-content:space-between; padding:2px 0; border-bottom:1px solid #222; ${rk.i===focusIdx?'color:#0cf; font-weight:bold;':''}"><span>${rank+1}위 T${rk.i+1}</span><span>${rk.s.toFixed(1)}</span></div>`; });
         document.getElementById('ranking-content').innerHTML = h;
 
         calculateNSetAdvice(visibleMats, x, round);
     }
 
+    window.applyActionSet = (actionsJson) => {
+        const actions = JSON.parse(decodeURIComponent(actionsJson));
+        actions.forEach(a => {
+            const el = document.getElementById(`t${focusIdx}-c${a.i}`);
+            if(el) el.value = (parseInt(el.value) || 0) + a.d;
+        });
+        updateHUD();
+    };
+
     function calculateNSetAdvice(allMats, x, n) {
         const myM = allMats[focusIdx];
         const isAxMode = n <= 2;
-        
-        // Greedy Action Set Search (Distinct Cells)
         let sets = [];
-        for(let attempt = 0; attempt < 3; attempt++) {
-            let currentM = [...myM];
-            let actions = [];
-            let used = new Set();
-            let totalGain = 0;
 
-            for(let step = 0; attempt === 0 && step < n; step++) {
-                let bestMove = {i:-1, d:0, score:-1e9};
-                for(let i=0; i<9; i++) {
-                    if(used.has(i)) continue;
-                    for(let d of [-1, 1]) {
-                        let tempM = [...currentM]; tempM[i]+=d;
-                        let nextX = calculateXEst(allMats.map((m,idx)=>idx===focusIdx?tempM:m));
-                        let s = isAxMode ? axSum(tempM, nextX) : calculateDet(tempM);
-                        if(weights && weights[i]) s += (weights[i][tempM[i]] || 0);
-                        if(s > bestMove.score) { bestMove = {i, d, score:s}; }
-                    }
-                }
-                if(bestMove.i !== -1) {
-                    currentM[bestMove.i] += bestMove.d;
-                    used.add(bestMove.i);
-                    actions.push(bestMove);
-                    totalGain = bestMove.score;
+        // Greedy set generation
+        let used = new Set();
+        let currentM = [...myM];
+        let primaryActions = [];
+        for(let step = 0; step < n; step++) {
+            let bestMove = {i:-1, d:0, score:-1e9};
+            for(let i=0; i<9; i++) {
+                if(used.has(i)) continue;
+                for(let d of [-1, 1]) {
+                    let tempM = [...currentM]; tempM[i]+=d;
+                    let nextX = calculateXEst(allMats.map((m,idx)=>idx===focusIdx?tempM:m));
+                    let s = isAxMode ? axSum(tempM, nextX) : calculateDet(tempM);
+                    if(weights && weights[i]) s += (weights[i][tempM[i]] || 0);
+                    if(s > bestMove.score) { bestMove = {i, d, score:s}; }
                 }
             }
-            if(actions.length === n) sets.push({actions, score: totalGain});
-            
-            // Random variations for attempt 1 and 2 to give variety
-            if(attempt > 0) {
-                // Simplified random variety
-                let randActions = []; let rUsed = new Set();
-                while(randActions.length < n) {
-                    let i = Math.floor(Math.random()*9);
-                    if(!rUsed.has(i)) {
-                        let d = Math.random() > 0.5 ? 1 : -1;
-                        randActions.push({i, d}); rUsed.add(i);
-                    }
-                }
-                sets.push({actions: randActions, score: 0});
+            if(bestMove.i !== -1) {
+                currentM[bestMove.i] += bestMove.d;
+                used.add(bestMove.i);
+                primaryActions.push(bestMove);
             }
+        }
+        if(primaryActions.length === n) sets.push(primaryActions);
+
+        // Add 2 more sets with variations
+        for(let v = 0; v < 2; v++) {
+            let varActions = []; let vUsed = new Set();
+            while(varActions.length < n) {
+                let i = Math.floor(Math.random()*9);
+                if(!vUsed.has(i)) {
+                    let d = Math.random() > 0.5 ? 1 : -1;
+                    varActions.push({i, d}); vUsed.add(i);
+                }
+            }
+            sets.push(varActions);
         }
 
         let rh = '';
-        sets.slice(0, 3).forEach((set, idx) => {
+        sets.forEach((actions, idx) => {
             if(idx > 0 && n === 1) return;
-            rh += `<div class="rec-set"><div class="rec-header">추천 세트 ${idx+1}</div>`;
-            set.actions.forEach(a => {
+            const actionStr = encodeURIComponent(JSON.stringify(actions));
+            rh += `<div class="rec-set" onclick="applyActionSet('${actionStr}')" style="cursor:pointer">
+                <div class="rec-header">추천 세트 ${idx+1} (클릭 적용)</div>`;
+            actions.forEach(a => {
                 rh += `<div class="rec-item"><span class="rec-pos">[${Math.floor(a.i/3)+1}, ${a.i%3+1}]</span> 에 <b>${a.d>0?'+1':'-1'}</b></div>`;
             });
             rh += `</div>`;
@@ -192,7 +199,6 @@
             inp.addEventListener('input', updateHUD);
             inp.addEventListener('focus', function() { this.select(); });
             wrap.appendChild(inp);
-            // Apply mask to opponent diagonals
             if(t>0 && DIAG.includes(i)) {
                 const mask = document.createElement('div'); mask.className = 'diag-mask'; mask.textContent = '?';
                 wrap.appendChild(mask);
