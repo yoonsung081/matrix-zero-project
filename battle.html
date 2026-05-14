@@ -235,47 +235,69 @@ function gen3DecodePriv(actIdx) {
 }
 
 // ─── My model inference ───────────────────────────────────────
-function myObs(tIdx, matrices, xVec, rnd) {
-    const feat = new Array(30).fill(0);
-    for(let i=0;i<9;i++) feat[i]=matrices[tIdx][i];
-    for(let i=0;i<3;i++) feat[9+i]=xVec[i];
-    feat[12]=rnd;
-    const scores=matrices.map(mm=>score(mm,xVec,rnd));
-    const ms=Math.max(1e-8,...scores.map(Math.abs));
-    for(let i=0;i<6;i++) feat[13+i]=scores[i]/ms;
-    const dets=matrices.map(mm=>det(mm));
-    const md=Math.max(1e-8,...dets.map(Math.abs));
-    for(let i=0;i<6;i++) feat[19+i]=dets[i]/md;
-    feat[25]=scores.filter(s=>s>scores[tIdx]).length/5;
-    feat[26]=1.0;
-    return feat;
-}
-
-function myFwd(feat, W1, B1, W2, B2) {
-    const h=B1.map((b,j)=>{let s=b; for(let i=0;i<feat.length;i++) s+=feat[i]*W1[i][j]; return s>0?s:0;});
-    return B2.map((b,j)=>{let s=b; for(let i=0;i<h.length;i++) s+=h[i]*W2[i][j]; return s;});
+function axScore(m, xVec) {
+    let s = 0;
+    for (let i = 0; i < 9; i++) s += m[i] * xVec[i % 3];
+    return s;
 }
 
 function myPick(tIdx, matrices, xVec, rnd, usedIdx) {
-    let logits = myW
-        ? myFwd(myObs(tIdx,matrices,xVec,rnd), myW.w1, myW.b1, myW.w2, myW.b2)
-        : heuristicLogits(matrices[tIdx], xVec, rnd);
-    for(const idx of usedIdx){ logits[idx*2]=-1e9; logits[idx*2+1]=-1e9; }
-    const a=logits.indexOf(Math.max(...logits));
-    return {cellIdx:Math.floor(a/2), delta:a%2===0?1:-1};
+    const myM = [...matrices[tIdx]];
+    const usedSet = new Set(usedIdx);
+    let best = {cellIdx: 0, delta: 1, score: -Infinity};
+    for (let i = 0; i < 9; i++) {
+        if (usedSet.has(i)) continue;
+        for (const delta of [1, -1]) {
+            const n = [...myM]; n[i] += delta;
+            const d = det(n);
+            const ax = axScore(n, xVec);
+            let s;
+            if (rnd <= 2) {
+                // Maximize Ax; diagonal bonus for future det
+                s = ax * 1000;
+                if (i === 0 || i === 4 || i === 8) s += 5;
+            } else if (rnd <= 4) {
+                // Maximize det for round win; det=0 is fatal
+                if (d === 0) s = -5000;
+                else s = d * 100 + ax * 2;
+            } else {
+                // Round 5: survive (det≠0) then maximize Ax for final win
+                if (d === 0) s = -100000;
+                else s = ax * 1000 + Math.abs(d) * 5;
+            }
+            if (s > best.score) best = {cellIdx: i, delta, score: s};
+        }
+    }
+    return best;
 }
 
 function myPriv(tIdx, matrices, xVec, rnd) {
-    if(!myW) return applyBestPriv(tIdx,matrices,xVec,rnd,'swap_row','self');
-    const feat=myObs(tIdx,matrices,xVec,rnd);
-    const pl=myFwd(feat,myW.pw1,myW.pb1,myW.pw2,myW.pb2);
-    const a=pl.indexOf(Math.max(...pl));
-    const types=['swap_row','swap_col','zero','swap_elements'];
-    const privType=types[Math.floor(a/2)];
-    const scope=a%2===0?'self':'others';
-    const targets=scope==='self'?[tIdx]:[...Array(6).keys()].filter(i=>i!==tIdx);
-    for(const t of targets) applyBestPriv(t,matrices,xVec,rnd,privType,scope);
-    return {privType,scope};
+    const types = ['swap_row', 'swap_col', 'zero', 'swap_elements'];
+    let best = {type: 'swap_row', scope: 'self', gain: -Infinity};
+    const myBefore = score(matrices[tIdx], xVec, rnd);
+    for (const privType of types) {
+        for (const scope of ['self', 'others']) {
+            const mc = matrices.map(m => [...m]);
+            const targets = scope === 'self'
+                ? [tIdx]
+                : [...Array(6).keys()].filter(i => i !== tIdx);
+            for (const t of targets) applyBestPriv(t, mc, xVec, rnd, privType, scope);
+            let gain;
+            if (scope === 'self') {
+                gain = score(mc[tIdx], xVec, rnd) - myBefore;
+            } else {
+                const before = matrices.filter((_, i) => i !== tIdx).reduce((s, m) => s + score(m, xVec, rnd), 0);
+                const after  = mc.filter((_, i) => i !== tIdx).reduce((s, m) => s + score(m, xVec, rnd), 0);
+                gain = before - after;
+            }
+            if (gain > best.gain) best = {type: privType, scope, gain};
+        }
+    }
+    const targets = best.scope === 'self'
+        ? [tIdx]
+        : [...Array(6).keys()].filter(i => i !== tIdx);
+    for (const t of targets) applyBestPriv(t, matrices, xVec, rnd, best.type, best.scope);
+    return {privType: best.type, scope: best.scope};
 }
 
 function applyBestPriv(tIdx,matrices,xVec,rnd,privType,scope) {
