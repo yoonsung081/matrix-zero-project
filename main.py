@@ -84,6 +84,7 @@ def gen3_act(matrices_np, t_idx, x_vec_np, rnd, is_priv, used_cells):
     if is_priv:
         logits[:18] = -1e9
     else:
+        logits[18:] = -1e9  # privilege 범위 차단
         for r, c in used_cells:
             logits[(r*3+c)*2]   = -1e9
             logits[(r*3+c)*2+1] = -1e9
