@@ -3,13 +3,11 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Matrix Game: Survival Battle</title>
+    <title>Matrix Survival Battle</title>
     <script>
-        // 익스텐션 메시지 채널 오류 억제
         window.addEventListener('unhandledrejection', e => { 
             if (e.reason && e.reason.message && (e.reason.message.includes('message channel closed') || e.reason.message.includes('listener indicated'))) {
-                e.preventDefault();
-                e.stopImmediatePropagation();
+                e.preventDefault(); e.stopImmediatePropagation();
             }
         }, true);
     </script>
@@ -17,72 +15,72 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             width: 100vw; height: 100vh; overflow: hidden;
-            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
-            background: #0f0f11; color: #eee; font-size: 12px;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: #09090b; color: #eee; font-size: 11px;
         }
         .app-container {
             display: grid;
-            grid-template-columns: 210px 1fr 260px;
-            grid-template-rows: 46px 1fr;
+            grid-template-columns: 170px 1fr 190px;
+            grid-template-rows: 35px 1fr;
             height: 100vh; gap: 4px; padding: 4px;
         }
         header {
-            grid-column: 1 / -1; background: #1a1a1d; border-radius: 6px;
-            display: flex; align-items: center; padding: 0 15px; gap: 12px;
-            border: 1px solid #333;
+            grid-column: 1 / -1; background: #16161a; border-radius: 4px;
+            display: flex; align-items: center; padding: 0 10px; gap: 10px; border: 1px solid #333;
         }
-        h1 { font-size: 1rem; color: #00ffcc; white-space: nowrap; margin-right: 5px; }
-        .hud-item { padding: 4px 10px; border-radius: 12px; background: #25252a; border: 1px solid #444; font-weight: bold; font-size: 0.7rem; white-space: nowrap; }
+        h1 { font-size: 0.8rem; color: #00ffcc; white-space: nowrap; }
+        .hud-item { padding: 2px 8px; border-radius: 10px; background: #222; border: 1px solid #444; font-weight: bold; font-size: 0.65rem; }
         
-        .sidebar { background: #1a1a1d; border-radius: 6px; padding: 8px; display: flex; flex-direction: column; gap: 6px; border: 1px solid #333; overflow-y: auto; }
-        .main-content { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); gap: 5px; }
-        .analysis-bar { background: #1a1a1d; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; gap: 8px; border: 1px solid #333; overflow-y: auto; }
+        .sidebar, .analysis-bar { background: #16161a; border-radius: 4px; padding: 6px; display: flex; flex-direction: column; gap: 4px; border: 1px solid #333; overflow: hidden; }
+        .main-content { 
+            display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); 
+            gap: 4px; height: 100%; width: 100%; min-width: 0; 
+        }
 
-        .team-card { background: #222226; border: 1px solid #3d3d42; border-radius: 6px; padding: 5px; display: flex; flex-direction: column; position: relative; }
-        .team-card.is-player { border-color: #00ffcc; background: #1a2221; }
-        .team-card.just-moved { animation: cardPulse 0.6s ease-out; }
-        @keyframes cardPulse { 0% { border-color: #ffd700; box-shadow: 0 0 10px #ffd700; } 100% { border-color: #3d3d42; } }
+        .team-card { 
+            background: #1c1c21; border: 1px solid #333; border-radius: 4px; padding: 4px; 
+            display: flex; flex-direction: column; justify-content: space-between; min-width: 0;
+        }
+        .team-card.is-player { border-color: #00ffcc; background: #111a19; }
+        .team-card.just-moved { animation: cardPulse 0.5s ease-out; }
+        @keyframes cardPulse { 0% { border-color: #ffd700; box-shadow: 0 0 10px #ffd700; } 100% { border-color: #333; } }
 
-        .team-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 3px; }
-        .team-name { font-size: 0.7rem; font-weight: bold; color: #888; }
+        .team-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 2px; }
+        .team-name { font-size: 0.6rem; font-weight: bold; color: #555; }
         .is-player .team-name { color: #00ffcc; }
 
-        .matrix-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; }
+        .matrix-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; flex-grow: 1; }
         .matrix-grid input {
-            width: 100%; aspect-ratio: 1; text-align: center; background: #000; color: #fff;
-            border: 1px solid #444; border-radius: 2px; font-size: 0.85rem; padding: 0;
-            transition: all 0.1s;
+            width: 100%; height: 100%; text-align: center; background: #000; color: #fff;
+            border: 1px solid #333; border-radius: 2px; font-size: 0.85rem; padding: 0; font-weight: bold;
         }
         .matrix-grid input.cell-used { border-color: #ff8c00 !important; background: rgba(255,140,0,0.15) !important; color: #ff8c00; }
-        .matrix-grid input:focus { outline: none; border-color: #007bff; }
         
         .det-box {
-            margin-top: 4px; padding: 2px 5px; background: rgba(0,0,0,0.4); border-radius: 3px;
-            display: flex; justify-content: space-between; font-size: 0.65rem; font-family: 'Consolas', monospace;
+            margin-top: 2px; padding: 2px 4px; background: rgba(0,0,0,0.4); border-radius: 2px;
+            display: flex; justify-content: space-between; font-size: 0.6rem; font-family: monospace;
         }
         .det-val.zero { color: #ff4444; font-weight: bold; }
         .ax-val { color: #00ffcc; }
 
-        .btn { width: 100%; padding: 7px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; font-size: 0.72rem; transition: 0.2s; }
+        .btn { width: 100%; padding: 5px; border-radius: 3px; border: none; cursor: pointer; font-weight: bold; font-size: 0.65rem; transition: 0.2s; }
         .btn-start { background: #28a745; color: white; }
-        .btn-confirm { background: #6f42c1; color: white; margin-top: 5px; }
-        .btn-danger { background: #444; color: #ccc; }
-        .btn-page { background: #222; border: 1px solid #444; color: #888; margin-top: auto; padding: 10px; }
-        .btn:disabled { opacity: 0.2; cursor: not-allowed; }
+        .btn-confirm { background: #6f42c1; color: white; }
+        .btn-danger { background: #333; color: #aaa; font-size: 0.6rem; }
+        .btn-page { background: #222; border: 1px solid #444; color: #00ffcc; margin-top: auto; text-decoration: none; text-align: center; line-height: 1.5; }
 
-        .log-area { flex-grow: 1; background: #000; border-radius: 4px; padding: 5px; font-size: 0.63rem; overflow-y: auto; font-family: monospace; border: 1px solid #333; line-height: 1.3; }
+        .log-area { flex-grow: 1; background: #000; border-radius: 3px; padding: 4px; font-size: 0.6rem; overflow-y: auto; font-family: monospace; border: 1px solid #222; line-height: 1.2; }
         .log-ai { color: #ff6b6b; } .log-player { color: #00ffcc; } .log-sys { color: #777; }
 
-        .sec-title { font-size: 0.6rem; color: #555; text-transform: uppercase; border-bottom: 1px solid #333; margin-bottom: 5px; padding-bottom: 2px; }
-        .stat-row { display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #25252a; }
+        .rank-row { display: flex; justify-content: space-between; padding: 2px 0; border-bottom: 1px solid #222; }
         .rank-me { color: #00ffcc; font-weight: bold; }
 
-        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center; }
-        .modal { background: #1a1a1d; border: 2px solid #007bff; padding: 20px; border-radius: 12px; width: 320px; box-shadow: 0 0 20px rgba(0,0,0,0.5); }
-        .priv-btn { margin-bottom: 6px; text-align: left; padding: 10px; }
+        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 1000; align-items: center; justify-content: center; }
+        .modal { background: #1a1a1d; border: 2px solid #007bff; padding: 12px; border-radius: 8px; width: 260px; }
+        .priv-btn { margin-bottom: 4px; text-align: left; padding: 6px; font-size: 0.75rem; background: #333; color: #fff; }
         
-        .cell-wrapper { position: relative; width: 100%; }
-        .mask { position: absolute; inset: 0; background: #111; border: 1px solid #333; display: none; align-items: center; justify-content: center; color: #444; font-size: 1.2rem; pointer-events: none; }
+        .cell-wrapper { position: relative; width: 100%; height: 100%; }
+        .mask { position: absolute; inset: 0; background: #111; border: 1px solid #222; display: none; align-items: center; justify-content: center; color: #333; font-size: 1rem; pointer-events: none; }
         .mask.visible { display: flex; }
     </style>
 </head>
@@ -90,149 +88,118 @@
 
 <div class="overlay" id="privilege-ui">
     <div class="modal">
-        <h2 style="color:#ffd700; margin-bottom:15px; font-size:1rem; text-align:center;">🏆 라운드 승리! 특권 선택</h2>
-        <div class="sec-title">나에게 적용 (강화)</div>
-        <button class="btn priv-btn" style="background:#28a745;" onclick="applyPrivilege('swap_rowcol', 'self')">행/열 교환</button>
-        <button class="btn priv-btn" style="background:#28a745;" onclick="applyPrivilege('zero', 'self')">원소 무력화(0)</button>
-        <button class="btn priv-btn" style="background:#28a745;" onclick="applyPrivilege('swap_elements', 'self')">두 원소 위치 교환</button>
-        <div class="sec-title" style="margin-top:10px;">타팀 일괄 적용 (견제)</div>
-        <button class="btn priv-btn" style="background:#dc3545;" onclick="applyPrivilege('swap_rowcol', 'others')">행/열 교환</button>
-        <button class="btn priv-btn" style="background:#dc3545;" onclick="applyPrivilege('zero', 'others')">원소 무력화(0)</button>
-        <button class="btn priv-btn" style="background:#dc3545;" onclick="applyPrivilege('swap_elements', 'others')">원소 위치 교환</button>
+        <h2 style="color:#ffd700; margin-bottom:12px; font-size:0.9rem; text-align:center;">🏆 승리! 특권 선택</h2>
+        <div style="font-size:0.6rem; color:#555; margin-bottom:4px;">나에게 적용</div>
+        <button class="btn priv-btn" style="border-left: 3px solid #28a745;" onclick="applyPrivilege('swap_rowcol', 'self')">행/열 교환</button>
+        <button class="btn priv-btn" style="border-left: 3px solid #28a745;" onclick="applyPrivilege('zero', 'self')">원소 무력화(0)</button>
+        <button class="btn priv-btn" style="border-left: 3px solid #28a745;" onclick="applyPrivilege('swap_elements', 'self')">두 원소 위치 교환</button>
+        <div style="font-size:0.6rem; color:#555; margin-top:8px; margin-bottom:4px;">타팀 일괄 적용</div>
+        <button class="btn priv-btn" style="border-left: 3px solid #dc3545;" onclick="applyPrivilege('swap_rowcol', 'others')">행/열 교환</button>
+        <button class="btn priv-btn" style="border-left: 3px solid #dc3545;" onclick="applyPrivilege('zero', 'others')">원소 무력화(0)</button>
+        <button class="btn priv-btn" style="border-left: 3px solid #dc3545;" onclick="applyPrivilege('swap_elements', 'others')">원소 위치 교환</button>
     </div>
 </div>
 
 <div class="app-container">
     <header>
         <h1>MATRIX SURVIVAL</h1>
-        <div id="hud-round" class="hud-item">ROUND 1</div>
-        <div id="hud-x" class="hud-item" style="color:#ffd700">X = [0, 0, 0]</div>
+        <div id="hud-round" class="hud-item">R1</div>
+        <div id="hud-x" class="hud-item" style="color:#ffd700">X=[0,0,0]</div>
         <div id="hud-actions" class="hud-item" style="color:#00ffcc">남은 행동: 1</div>
-        <div id="ai-thinking" style="display:none; color:#ffd700; font-size:0.7rem;"><span class="ai-spin">⚙</span> AI 연산 중...</div>
-        <div id="turn-status" style="margin-left:auto;"></div>
+        <div id="turn-status" style="margin-left:auto; font-weight:bold; font-size:0.7rem;"></div>
     </header>
 
     <div class="sidebar">
-        <div class="sec-title">제어</div>
-        <button class="btn btn-start" onclick="startBattle()">🎮 새 게임 시작</button>
+        <button class="btn btn-start" onclick="startBattle()">🎮 게임 시작</button>
         <button class="btn btn-confirm" id="btn-confirm" onclick="confirmMove()" disabled>✅ 내 수 확정</button>
-        <button class="btn btn-danger" onclick="clearAllInputs()">🧹 전체 초기화</button>
-        <button class="btn" style="background:#333; color:#aaa;" onclick="toggleDiag()">🔓 대각 공개/숨김</button>
-        
-        <div class="sec-title" style="margin-top:5px;">배틀 로그</div>
-        <div class="log-area" id="log">게임을 시작하세요.</div>
-
-        <button class="btn btn-page" onclick="location.href='advice.html'">📊 전략 도우미로 이동</button>
+        <button class="btn" style="background:#333; color:#888;" onclick="clearAllInputs()">🧹 초기화</button>
+        <button class="btn" style="background:#222; color:#555;" onclick="toggleDiag()">🔓 대각 공개</button>
+        <div class="log-area" id="log">대전 대기 중...</div>
+        <a href="advice.html" class="btn btn-page">📊 조언 모드로 이동</a>
     </div>
 
-    <div class="main-content" id="matrix-container">
-        <!-- 6 Matrices here -->
-    </div>
+    <div class="main-content" id="matrix-container"></div>
 
     <div class="analysis-bar">
-        <div id="ranking-content">
-            <div class="sec-title">실시간 순위</div>
-            <div style="color:#444; text-align:center;">대기 중</div>
+        <div id="ranking-content" style="flex-grow:1;">
+            <div style="font-size:0.6rem; color:#444;">실시간 순위</div>
         </div>
-        <div style="margin-top:auto;">
-            <div class="sec-title">규칙 요약</div>
-            <p style="font-size:0.6rem; color:#666; line-height:1.3;">
-                • R(N): N개 칸 선택 (±1 적용)<br>
-                • 동일 라운드 내 중복 칸 불가<br>
-                • 최종 5R 종료 시 det=0 이면 탈락<br>
-                • 우승: 1순위 Ax 점수, 2순위 |det|
-            </p>
+        <div style="font-size:0.5rem; color:#444; border-top:1px solid #222; padding-top:4px;">
+            Survival: det ≠ 0 (5R)<br>Rank: Ax 점수 우선
         </div>
     </div>
 </div>
 
 <script>
-    /* ═══════════════════════════════════════
-       엔진: 선형대수 및 게임 규칙
-    ═══════════════════════════════════════ */
     const state = { active: false, playerTurn: false, round: 1, actions: 1, used: new Set() };
     const DIAG = [0, 4, 8];
 
-    function calculateDet(m) {
-        return m[0]*(m[4]*m[8]-m[5]*m[7]) - m[1]*(m[3]*m[8]-m[5]*m[6]) + m[2]*(m[3]*m[7]-m[4]*m[6]);
-    }
-
-    function calculateX(mats) {
-        let x = [0,0,0];
-        for(let i=0; i<3; i++) x[i] = Math.floor(mats.reduce((s, m) => s + m[i*4], 0) / 6);
-        return x;
-    }
+    function calculateDet(m) { return m[0]*(m[4]*m[8]-m[5]*m[7]) - m[1]*(m[3]*m[8]-m[5]*m[6]) + m[2]*(m[3]*m[7]-m[4]*m[6]); }
+    function calculateX(mats) { let x=[0,0,0]; for(let i=0; i<3; i++) x[i]=Math.floor(mats.reduce((s,m)=>s+m[i*4],0)/6); return x; }
+    function axSum(m, x) { return m[0]*x[0]+m[1]*x[1]+m[2]*x[2]+m[3]*x[0]+m[4]*x[1]+m[5]*x[2]+m[6]*x[0]+m[7]*x[1]+m[8]*x[2]; }
 
     function getMatrices() {
         let all = [];
         for(let t=0; t<6; t++) {
-            let m = [];
-            for(let i=0; i<9; i++) m.push(parseInt(document.getElementById(`t${t}-c${i}`).value) || 0);
+            let m = []; for(let i=0; i<9; i++) m.push(parseInt(document.getElementById(`t${t}-c${i}`).value) || 0);
             all.push(m);
         }
         return all;
     }
 
+    function updateHUD() {
+        const mats = getMatrices(), x = calculateX(mats);
+        document.getElementById('hud-round').textContent = `R${state.round}`;
+        document.getElementById('hud-actions').textContent = `남은 행동: ${state.actions}`;
+        document.getElementById('hud-x').textContent = `X=[${x.join(',')}]`;
+        
+        mats.forEach((m, t) => {
+            const d = calculateDet(m), ax = axSum(m, x);
+            document.getElementById(`det-${t}`).innerHTML = `<span>det: <b class="det-val ${d===0?'zero':''}">${d}</b></span><span>Ax: <b class="ax-val">${ax.toFixed(1)}</b></span>`;
+        });
+
+        const ranking = mats.map((m,i)=>({i, s: state.round<=2?axSum(m,x):calculateDet(m)})).sort((a,b)=>b.s-a.s);
+        let h = `<div style="font-size:0.6rem; color:#444; margin-bottom:4px;">RANKING</div>`;
+        ranking.forEach((r, rank) => { h += `<div class="rank-row ${r.i===0?'rank-me':''}"><span>${rank+1}위 T${r.i+1}</span><span>${r.s.toFixed(1)}</span></div>`; });
+        document.getElementById('ranking-content').innerHTML = h;
+
+        // 행동이 0이면 즉시 모든 플레이어 입력칸 비활성화
+        if(state.actions === 0) {
+            for(let i=0; i<9; i++) document.getElementById(`t0-c${i}`).disabled = true;
+        }
+    }
+
     function startBattle() {
-        state.active = true; state.round = 1; state.log = [];
-        document.getElementById('btn-confirm').disabled = false;
+        state.active = true; state.round = 1; document.getElementById('btn-confirm').disabled = false;
         document.getElementById('log').innerHTML = '';
         for(let t=0; t<6; t++) {
-            const m = new Array(9).fill(0);
             for(let i=0; i<9; i++) {
                 const inp = document.getElementById(`t${t}-c${i}`);
                 inp.value = 0; inp.disabled = (t > 0); inp.classList.remove('cell-used');
             }
-            refreshDetLine(t, m);
         }
-        beginTurn();
-        addLog('sys', '게임을 시작합니다. 모든 행렬 0으로 초기화.');
+        beginTurn(); addLog('sys', '게임을 시작합니다.');
     }
 
     function beginTurn() {
-        state.playerTurn = true;
-        state.actions = state.round;
-        state.used.clear();
+        state.playerTurn = true; state.actions = state.round; state.used.clear();
         for(let i=0; i<9; i++) {
             const inp = document.getElementById(`t0-c${i}`);
-            inp.disabled = false;
-            inp.classList.remove('cell-used');
+            inp.disabled = false; inp.classList.remove('cell-used');
         }
         updateHUD();
-        document.getElementById('turn-status').innerHTML = '<span class="turn-pill tp-player"><span class="dot dot-cyan"></span>내 차례</span>';
-    }
-
-    function updateHUD() {
-        document.getElementById('hud-round').textContent = `ROUND ${state.round}`;
-        document.getElementById('hud-actions').textContent = `남은 행동: ${state.actions}`;
-        const mats = getMatrices();
-        const x = calculateX(mats);
-        document.getElementById('hud-x').textContent = `X = [${x.join(', ')}]`;
-        
-        mats.forEach((m, t) => refreshDetLine(t, m));
-        updateRanking(mats, x);
-    }
-
-    function refreshDetLine(t, m) {
-        const d = calculateDet(m);
-        const x = calculateX(getMatrices());
-        const ax = m[0]*x[0] + m[1]*x[1] + m[2]*x[2] + m[3]*x[0] + m[4]*x[1] + m[5]*x[2] + m[6]*x[0] + m[7]*x[1] + m[8]*x[2];
-        const el = document.getElementById(`det-${t}`);
-        el.innerHTML = `<span>det: <b class="det-val ${d===0?'zero':''}">${d}</b></span><span>Ax: <b class="ax-val">${ax.toFixed(1)}</b></span>`;
+        document.getElementById('turn-status').innerHTML = '<span style="color:#00ffcc">PLAYER</span>';
     }
 
     function confirmMove() {
-        if(state.actions > 0) { addLog('sys', '행동을 모두 소모하세요.'); return; }
+        if(state.actions > 0) return alert('남은 행동을 소모하세요.');
         state.playerTurn = false;
-        document.getElementById('turn-status').innerHTML = '<span class="turn-pill tp-ai"><span class="dot dot-red"></span>대기 중...</span>';
-        addLog('player', `R${state.round} 행동 확정.`);
-        
-        document.getElementById('ai-thinking').style.display = 'block';
+        document.getElementById('turn-status').innerHTML = '<span style="color:#ff6b6b">AI TURN</span>';
+        addLog('player', `R${state.round} 수 확정.`);
         let processed = 0;
         for(let t=1; t<=5; t++) {
             setTimeout(() => {
-                let all = getMatrices();
-                let myM = [...all[t]], used = new Set();
+                let all = getMatrices(), myM = [...all[t]], used = new Set();
                 for(let a=0; a<state.round; a++) {
                     let best = {idx:0, d:1, s:-1e9};
                     for(let i=0; i<9; i++) {
@@ -246,152 +213,113 @@
                     myM[best.idx] += best.d; used.add(best.idx);
                 }
                 const card = document.querySelector(`.team-card[data-team="${t}"]`);
-                card.classList.add('just-moved'); setTimeout(()=>card.classList.remove('just-moved'), 600);
-                
+                card.classList.add('just-moved'); setTimeout(()=>card.classList.remove('just-moved'), 400);
                 for(let i=0; i<9; i++) document.getElementById(`t${t}-c${i}`).value = myM[i];
                 updateHUD();
-                
-                if(++processed === 5) {
-                    document.getElementById('ai-thinking').style.display = 'none';
-                    checkRoundEnd();
-                }
-            }, t * 250);
+                if(++processed === 5) checkRoundEnd();
+            }, t * 150);
         }
     }
 
     function checkRoundEnd() {
-        const mats = getMatrices();
-        const winIdx = getRoundWinnerIdx(mats, state.round);
+        const mats = getMatrices(), x = calculateX(mats);
+        const scores = mats.map(m => state.round <= 2 ? axSum(m, x) : calculateDet(m));
+        const sorted = scores.map((s,i)=>({s,i})).sort((a,b)=>b.s-a.s);
+        let winIdx = (sorted[0].s > sorted[1].s) ? sorted[0].i : -1;
+        if(winIdx === -1) {
+            const p2 = sorted.filter(v=>v.s < sorted[0].s);
+            if(p2.length > 0 && (p2.length === 1 || p2[0].s > p2[1].s)) winIdx = p2[0].i;
+        }
+
         if(winIdx !== -1) {
             addLog('sys', `R${state.round} 승자: Team ${winIdx+1}`);
-            if(winIdx === 0) { document.getElementById('privilege-ui').style.display='flex'; }
-            else { 
-                addLog('ai', `AI 승자(T${winIdx+1})가 특권을 행사했습니다.`);
-                setTimeout(nextRound, 1000); 
+            if(winIdx === 0) document.getElementById('privilege-ui').style.display='flex';
+            else {
+                const target = Math.random() > 0.4 ? 'others' : 'self';
+                const type = ['swap_rowcol', 'zero', 'swap_elements'][Math.floor(Math.random()*3)];
+                executePrivilege(type, target, winIdx);
+                addLog('ai', `AI(T${winIdx+1})가 ${type} 발동!`);
+                setTimeout(nextRound, 1000);
             }
-        } else {
-            addLog('sys', `공동 승자로 특권이 소멸되었습니다.`);
-            nextRound();
-        }
-    }
-
-    function getRoundWinnerIdx(mats, r) {
-        const x = calculateX(mats);
-        const scores = mats.map(m => r <= 2 ? axSum(m, x) : calculateDet(m));
-        const sorted = scores.map((s,i)=>({s,i})).sort((a,b)=>b.s-a.s);
-        if(sorted[0].s > sorted[1].s) return sorted[0].i; // 1위 단독
-        const s1 = sorted[0].s;
-        const p2 = sorted.filter(v => v.s < s1);
-        if(p2.length > 0 && (p2.length === 1 || p2[0].s > p2[1].s)) return p2[0].i; // 2위 단독
-        return -1;
+        } else { addLog('sys', `공동 승자로 특권 소멸.`); nextRound(); }
     }
 
     function applyPrivilege(type, target) {
         document.getElementById('privilege-ui').style.display='none';
-        addLog('player', `특권(${type})을 ${target==='self'?'나':'타팀'}에게 적용.`);
-        nextRound();
+        executePrivilege(type, target, 0); addLog('player', `특권(${type}) 발동 완료.`); nextRound();
+    }
+
+    function executePrivilege(type, target, winnerIdx) {
+        const mats = getMatrices(), round = state.round, x = calculateX(mats);
+        const affected = target === 'self' ? [winnerIdx] : [0,1,2,3,4,5].filter(i => i !== winnerIdx);
+        affected.forEach(idx => {
+            let bestMat = [...mats[idx]], bestS = (target==='self' || (target==='others' && idx===winnerIdx)) ? -Infinity : Infinity;
+            const evalS = (m) => round <= 2 ? axSum(m, x) : calculateDet(m);
+            const isBetter = (s1, s2) => (target==='self' || (target==='others' && idx===winnerIdx)) ? s1 > s2 : s1 < s2;
+
+            if(type === 'zero') { 
+                for(let i=0; i<9; i++) { let m=[...mats[idx]]; m[i]=0; let s=evalS(m); if(isBetter(s, bestS)){ bestS=s; bestMat=m; } }
+            } else if(type === 'swap_rowcol') {
+                [{r:[0,1]},{r:[0,2]},{r:[1,2]},{c:[0,1]},{c:[0,2]},{c:[1,2]}].forEach(s => {
+                    let m=[...mats[idx]];
+                    if(s.r) { for(let i=0;i<3;i++){let tmp=m[s.r[0]*3+i]; m[s.r[0]*3+i]=m[s.r[1]*3+i]; m[s.r[1]*3+i]=tmp;} }
+                    else { for(let i=0;i<3;i++){let tmp=m[i*3+s.c[0]]; m[i*3+s.c[0]]=m[i*3+s.c[1]]; m[i*3+s.c[1]]=tmp;} }
+                    let s2=evalS(m); if(isBetter(s2, bestS)){ bestS=s2; bestMat=m; }
+                });
+            } else {
+                for(let i=0; i<9; i++) for(let j=i+1; j<9; j++){
+                    let m=[...mats[idx]], t=m[i]; m[i]=m[j]; m[j]=t; let s=evalS(m);
+                    if(isBetter(s, bestS)){ bestS=s; bestMat=m; }
+                }
+            }
+            for(let i=0; i<9; i++) document.getElementById(`t${idx}-c${i}`).value = bestMat[i];
+        });
+        updateHUD();
     }
 
     function nextRound() {
         if(state.round < 5) { state.round++; beginTurn(); }
         else {
-            const winner = getFinalWinner(getMatrices());
-            if(winner.winner !== -1) {
-                addLog('sys', `최종 우승: Team ${winner.winner+1}!`);
-                alert(`🎉 최종 우승: Team ${winner.winner+1}\n점수: ${winner.score.toFixed(1)}`);
-            } else {
-                addLog('sys', '생존자 없음. 전원 탈락.');
-                alert("💀 전원 탈락 (det=0)!");
+            const mats = getMatrices(), x = calculateX(mats);
+            const survivors = mats.map((m,i)=>({i, d:calculateDet(m), ax:axSum(m,x)})).filter(p=>p.d!==0);
+            if(survivors.length === 0) alert("💀 전원 탈락 (det=0)!");
+            else {
+                survivors.sort((a,b)=>b.ax - a.ax || Math.abs(b.d)-Math.abs(a.d));
+                alert(`🎉 최종 우승: Team ${survivors[0].i+1}\nAx: ${survivors[0].ax.toFixed(1)}`);
             }
-            state.active = false;
-            document.getElementById('btn-confirm').disabled = true;
+            state.active = false; document.getElementById('btn-confirm').disabled = true;
         }
-        updateHUD();
-    }
-
-    function getFinalWinner(mats) {
-        const x = calculateX(mats);
-        const survivors = mats.map((m,i)=>({i, det:calculateDet(m), ax:axSum(m, x)}))
-                              .filter(p => p.det !== 0);
-        if(survivors.length === 0) return {winner: -1};
-        survivors.sort((a,b) => b.ax - a.ax || Math.abs(b.det) - Math.abs(a.det));
-        return {winner: survivors[0].i, score: survivors[0].ax};
-    }
-
-    function updateRanking(mats, x) {
-        const scores = mats.map(m => state.round <= 2 ? axSum(m, x) : calculateDet(m));
-        const ranking = scores.map((s,i)=>({i,s})).sort((a,b)=>b.s-a.s);
-        let h = `<div class="sec-title">실시간 순위 (R${state.round})</div>`;
-        ranking.forEach((r, rank) => {
-            h += `<div class="stat-row ${r.i===0?'rank-me':''}"><span>${rank+1}위 Team ${r.i+1}</span><span>${r.s.toFixed(1)}</span></div>`;
-        });
-        document.getElementById('ranking-content').innerHTML = h;
-    }
-
-    function axSum(m, x) {
-        return m[0]*x[0] + m[1]*x[1] + m[2]*x[2] + m[3]*x[0] + m[4]*x[1] + m[5]*x[2] + m[6]*x[0] + m[7]*x[1] + m[8]*x[2];
     }
 
     function addLog(type, msg) {
-        const el = document.getElementById('log');
-        const d = document.createElement('div');
-        d.className = `log-${type}`;
-        d.textContent = `> ${msg}`;
-        el.prepend(d);
+        const el = document.getElementById('log'), d = document.createElement('div');
+        d.className = `log-${type}`; d.textContent = `> ${msg}`; el.prepend(d);
     }
 
     function clearAllInputs() {
-        const inps = document.querySelectorAll('.matrix-grid input');
-        inps.forEach(inp => {
-            inp.value = 0; inp.classList.remove('cell-used'); inp.disabled = false;
-        });
-        state.used.clear();
-        state.actions = state.round;
-        updateHUD();
-        addLog('sys', '전체 초기화 완료.');
+        document.querySelectorAll('.matrix-grid input').forEach(inp => { inp.value = 0; inp.classList.remove('cell-used'); inp.disabled = false; });
+        state.used.clear(); updateHUD(); addLog('sys', '초기화 완료.');
     }
 
-    function toggleDiag() {
-        const masks = document.querySelectorAll('.mask');
-        const vis = masks[0].classList.contains('visible');
-        masks.forEach(m => m.classList.toggle('visible', !vis));
-    }
+    function toggleDiag() { document.querySelectorAll('.mask').forEach(m => m.classList.toggle('visible')); }
 
-    window.rowOp = (op, r1, r2) => {
-        let m = getMatrices()[0];
-        for(let c=0; c<3; c++) { let t=m[r1*3+c]; m[r1*3+c]=m[r2*3+c]; m[r2*3+c]=t; }
-        for(let i=0; i<9; i++) document.getElementById(`t0-c${i}`).value = m[i];
-        updateHUD();
-    };
-    window.colOp = (op, c1, c2) => {
-        let m = getMatrices()[0];
-        for(let r=0; r<3; r++) { let t=m[r*3+c1]; m[r*3+c1]=m[r*3+c2]; m[r*3+c2]=t; }
-        for(let i=0; i<9; i++) document.getElementById(`t0-c${i}`).value = m[i];
-        updateHUD();
-    };
-
-    // 초기 화면 구성
     const container = document.getElementById('matrix-container');
     for(let t=0; t<6; t++) {
         const card = document.createElement('div'); card.className = `team-card ${t===0?'is-player':''}`; card.dataset.team = t;
-        card.innerHTML = `<div class="team-card-header"><span class="team-name">TEAM ${t+1}${t===0?' (YOU)':''}</span></div><div class="matrix-grid"></div><div class="det-box" id="det-${t}"></div>`;
+        card.innerHTML = `<div class="team-card-header"><span class="team-name">TEAM ${t+1}</span></div><div class="matrix-grid"></div><div class="det-box" id="det-${t}"></div>`;
         const grid = card.querySelector('.matrix-grid');
         for(let i=0; i<9; i++) {
             const wrap = document.createElement('div'); wrap.className = 'cell-wrapper';
             const inp = document.createElement('input'); inp.type = 'number'; inp.id = `t${t}-c${i}`; inp.value = 0;
-            inp.addEventListener('input', (e) => {
+            inp.addEventListener('input', () => {
                 if(t===0 && state.playerTurn && state.actions > 0 && !state.used.has(i)) {
-                    state.actions--; state.used.add(i); inp.classList.add('cell-used'); inp.disabled = true;
-                    updateHUD();
-                } else if(t===0 && !state.active) {
-                    updateHUD(); // 자유 모드
-                }
+                    state.actions--; state.used.add(i); inp.classList.add('cell-used'); inp.disabled = true; updateHUD();
+                } else if(t===0 && !state.active) updateHUD();
             });
             inp.addEventListener('focus', function() { this.select(); });
             wrap.appendChild(inp);
             if(t>0 && DIAG.includes(i)) {
-                const mask = document.createElement('div'); mask.className = 'mask visible'; mask.id = `mask-t${t}-c${i}`; mask.textContent = '?';
-                wrap.appendChild(mask);
+                const mask = document.createElement('div'); mask.className = 'mask visible'; mask.id = `mask-t${t}-c${i}`; mask.textContent = '?'; wrap.appendChild(mask);
             }
             grid.appendChild(wrap);
         }
