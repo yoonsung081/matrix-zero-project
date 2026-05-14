@@ -1,0 +1,1282 @@
+{
+  "summary": {
+    "total_games": 1,
+    "win_counts": {
+      "T1 Gen3": 1,
+      "T2 My AI": 0,
+      "T3 Bot": 0,
+      "T4 Bot": 0,
+      "T5 Bot": 0,
+      "T6 Bot": 0
+    },
+    "win_rates": {
+      "T1 Gen3": 100.0,
+      "T2 My AI": 0.0,
+      "T3 Bot": 0.0,
+      "T4 Bot": 0.0,
+      "T5 Bot": 0.0,
+      "T6 Bot": 0.0
+    },
+    "elimination_games": 0
+  },
+  "games": [
+    {
+      "game": 1,
+      "final_winner": "T1 Gen3",
+      "round_wins": {
+        "T1 Gen3": 0,
+        "T2 My AI": 0,
+        "T3 Bot": 0,
+        "T4 Bot": 0,
+        "T5 Bot": 1,
+        "T6 Bot": 1
+      },
+      "final_state": {
+        "T1 Gen3": {
+          "matrix": [
+            0,
+            -2,
+            0,
+            -1,
+            -4,
+            0,
+            0,
+            -3,
+            -5
+          ],
+          "det": 10,
+          "ax": 33,
+          "survived": true
+        },
+        "T2 My AI": {
+          "matrix": [
+            2,
+            -1,
+            -2,
+            0,
+            -3,
+            -1,
+            -1,
+            0,
+            -5
+          ],
+          "det": 35,
+          "ax": 32,
+          "survived": true
+        },
+        "T3 Bot": {
+          "matrix": [
+            -1,
+            1,
+            -4,
+            0,
+            -3,
+            -2,
+            -3,
+            0,
+            1
+          ],
+          "det": 45,
+          "ax": 19,
+          "survived": true
+        },
+        "T4 Bot": {
+          "matrix": [
+            3,
+            0,
+            -1,
+            0,
+            -3,
+            -3,
+            0,
+            3,
+            -2
+          ],
+          "det": 45,
+          "ax": 18,
+          "survived": true
+        },
+        "T5 Bot": {
+          "matrix": [
+            -3,
+            0,
+            0,
+            0,
+            3,
+            0,
+            0,
+            -2,
+            -5
+          ],
+          "det": 45,
+          "ax": 13,
+          "survived": true
+        },
+        "T6 Bot": {
+          "matrix": [
+            -1,
+            0,
+            -4,
+            0,
+            3,
+            0,
+            3,
+            0,
+            -2
+          ],
+          "det": 42,
+          "ax": 12,
+          "survived": true
+        }
+      },
+      "x_final": [
+        0,
+        -2,
+        -3
+      ],
+      "rounds": [
+        {
+          "round": 1,
+          "winner": null,
+          "privilege": null,
+          "x_vec": [
+            0,
+            0,
+            -1
+          ],
+          "actions": [
+            {
+              "action": 1,
+              "moves": [
+                {
+                  "team": "T1 Gen3",
+                  "row": 3,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T2 My AI",
+                  "row": 3,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T3 Bot",
+                  "row": 1,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T4 Bot",
+                  "row": 3,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T5 Bot",
+                  "row": 3,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T6 Bot",
+                  "row": 1,
+                  "col": 3,
+                  "delta": -1
+                }
+              ]
+            }
+          ],
+          "state": {
+            "T1 Gen3": {
+              "matrix": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                -1
+              ],
+              "det": 0,
+              "ax": 1
+            },
+            "T2 My AI": {
+              "matrix": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                -1
+              ],
+              "det": 0,
+              "ax": 1
+            },
+            "T3 Bot": {
+              "matrix": [
+                0,
+                0,
+                -1,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              "det": 0,
+              "ax": 1
+            },
+            "T4 Bot": {
+              "matrix": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                -1
+              ],
+              "det": 0,
+              "ax": 1
+            },
+            "T5 Bot": {
+              "matrix": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                -1
+              ],
+              "det": 0,
+              "ax": 1
+            },
+            "T6 Bot": {
+              "matrix": [
+                0,
+                0,
+                -1,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              "det": 0,
+              "ax": 1
+            }
+          }
+        },
+        {
+          "round": 2,
+          "winner": null,
+          "privilege": null,
+          "x_vec": [
+            0,
+            -1,
+            -2
+          ],
+          "actions": [
+            {
+              "action": 1,
+              "moves": [
+                {
+                  "team": "T1 Gen3",
+                  "row": 3,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T2 My AI",
+                  "row": 3,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T3 Bot",
+                  "row": 2,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T4 Bot",
+                  "row": 2,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T5 Bot",
+                  "row": 2,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T6 Bot",
+                  "row": 3,
+                  "col": 3,
+                  "delta": -1
+                }
+              ]
+            },
+            {
+              "action": 2,
+              "moves": [
+                {
+                  "team": "T1 Gen3",
+                  "row": 2,
+                  "col": 2,
+                  "delta": -1
+                },
+                {
+                  "team": "T2 My AI",
+                  "row": 1,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T3 Bot",
+                  "row": 1,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T4 Bot",
+                  "row": 1,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T5 Bot",
+                  "row": 3,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T6 Bot",
+                  "row": 1,
+                  "col": 3,
+                  "delta": -1
+                }
+              ]
+            }
+          ],
+          "state": {
+            "T1 Gen3": {
+              "matrix": [
+                0,
+                0,
+                0,
+                0,
+                -1,
+                0,
+                0,
+                0,
+                -2
+              ],
+              "det": 0,
+              "ax": 5
+            },
+            "T2 My AI": {
+              "matrix": [
+                0,
+                0,
+                -1,
+                0,
+                0,
+                0,
+                0,
+                0,
+                -2
+              ],
+              "det": 0,
+              "ax": 6
+            },
+            "T3 Bot": {
+              "matrix": [
+                0,
+                0,
+                -2,
+                0,
+                0,
+                -1,
+                0,
+                0,
+                0
+              ],
+              "det": 0,
+              "ax": 6
+            },
+            "T4 Bot": {
+              "matrix": [
+                0,
+                0,
+                -1,
+                0,
+                0,
+                -1,
+                0,
+                0,
+                -1
+              ],
+              "det": 0,
+              "ax": 6
+            },
+            "T5 Bot": {
+              "matrix": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                -1,
+                0,
+                0,
+                -2
+              ],
+              "det": 0,
+              "ax": 6
+            },
+            "T6 Bot": {
+              "matrix": [
+                0,
+                0,
+                -2,
+                0,
+                0,
+                0,
+                0,
+                0,
+                -1
+              ],
+              "det": 0,
+              "ax": 6
+            }
+          }
+        },
+        {
+          "round": 3,
+          "winner": null,
+          "privilege": null,
+          "x_vec": [
+            -1,
+            -1,
+            -2
+          ],
+          "actions": [
+            {
+              "action": 1,
+              "moves": [
+                {
+                  "team": "T1 Gen3",
+                  "row": 2,
+                  "col": 2,
+                  "delta": -1
+                },
+                {
+                  "team": "T2 My AI",
+                  "row": 1,
+                  "col": 1,
+                  "delta": 1
+                },
+                {
+                  "team": "T3 Bot",
+                  "row": 3,
+                  "col": 1,
+                  "delta": -1
+                },
+                {
+                  "team": "T4 Bot",
+                  "row": 1,
+                  "col": 1,
+                  "delta": 1
+                },
+                {
+                  "team": "T5 Bot",
+                  "row": 2,
+                  "col": 2,
+                  "delta": 1
+                },
+                {
+                  "team": "T6 Bot",
+                  "row": 3,
+                  "col": 1,
+                  "delta": 1
+                }
+              ]
+            },
+            {
+              "action": 2,
+              "moves": [
+                {
+                  "team": "T1 Gen3",
+                  "row": 3,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T2 My AI",
+                  "row": 2,
+                  "col": 2,
+                  "delta": -1
+                },
+                {
+                  "team": "T3 Bot",
+                  "row": 2,
+                  "col": 2,
+                  "delta": -1
+                },
+                {
+                  "team": "T4 Bot",
+                  "row": 3,
+                  "col": 2,
+                  "delta": 1
+                },
+                {
+                  "team": "T5 Bot",
+                  "row": 1,
+                  "col": 1,
+                  "delta": -1
+                },
+                {
+                  "team": "T6 Bot",
+                  "row": 2,
+                  "col": 2,
+                  "delta": 1
+                }
+              ]
+            },
+            {
+              "action": 3,
+              "moves": [
+                {
+                  "team": "T1 Gen3",
+                  "row": 3,
+                  "col": 2,
+                  "delta": -1
+                },
+                {
+                  "team": "T2 My AI",
+                  "row": 3,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T3 Bot",
+                  "row": 1,
+                  "col": 1,
+                  "delta": -1
+                },
+                {
+                  "team": "T4 Bot",
+                  "row": 2,
+                  "col": 2,
+                  "delta": -1
+                },
+                {
+                  "team": "T5 Bot",
+                  "row": 3,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T6 Bot",
+                  "row": 1,
+                  "col": 1,
+                  "delta": -1
+                }
+              ]
+            }
+          ],
+          "state": {
+            "T1 Gen3": {
+              "matrix": [
+                0,
+                0,
+                0,
+                0,
+                -2,
+                0,
+                0,
+                -1,
+                -3
+              ],
+              "det": 0,
+              "ax": 9
+            },
+            "T2 My AI": {
+              "matrix": [
+                1,
+                0,
+                -1,
+                0,
+                -1,
+                0,
+                0,
+                0,
+                -3
+              ],
+              "det": 3,
+              "ax": 8
+            },
+            "T3 Bot": {
+              "matrix": [
+                -1,
+                0,
+                -2,
+                0,
+                -1,
+                -1,
+                -1,
+                0,
+                0
+              ],
+              "det": 2,
+              "ax": 9
+            },
+            "T4 Bot": {
+              "matrix": [
+                1,
+                0,
+                -1,
+                0,
+                -1,
+                -1,
+                0,
+                1,
+                -1
+              ],
+              "det": 2,
+              "ax": 5
+            },
+            "T5 Bot": {
+              "matrix": [
+                -1,
+                0,
+                0,
+                0,
+                1,
+                -1,
+                0,
+                0,
+                -3
+              ],
+              "det": 3,
+              "ax": 8
+            },
+            "T6 Bot": {
+              "matrix": [
+                -1,
+                0,
+                -2,
+                0,
+                1,
+                0,
+                1,
+                0,
+                -1
+              ],
+              "det": 3,
+              "ax": 5
+            }
+          }
+        },
+        {
+          "round": 4,
+          "winner": "T6 Bot",
+          "privilege": {
+            "cmd": "zero",
+            "scope": "self"
+          },
+          "x_vec": [
+            0,
+            -1,
+            -3
+          ],
+          "actions": [
+            {
+              "action": 1,
+              "moves": [
+                {
+                  "team": "T1 Gen3",
+                  "row": 2,
+                  "col": 2,
+                  "delta": -1
+                },
+                {
+                  "team": "T2 My AI",
+                  "row": 2,
+                  "col": 2,
+                  "delta": -1
+                },
+                {
+                  "team": "T3 Bot",
+                  "row": 2,
+                  "col": 2,
+                  "delta": -1
+                },
+                {
+                  "team": "T4 Bot",
+                  "row": 1,
+                  "col": 1,
+                  "delta": 1
+                },
+                {
+                  "team": "T5 Bot",
+                  "row": 1,
+                  "col": 1,
+                  "delta": -1
+                },
+                {
+                  "team": "T6 Bot",
+                  "row": 2,
+                  "col": 2,
+                  "delta": 1
+                }
+              ]
+            },
+            {
+              "action": 2,
+              "moves": [
+                {
+                  "team": "T1 Gen3",
+                  "row": 3,
+                  "col": 2,
+                  "delta": -1
+                },
+                {
+                  "team": "T2 My AI",
+                  "row": 1,
+                  "col": 1,
+                  "delta": 1
+                },
+                {
+                  "team": "T3 Bot",
+                  "row": 3,
+                  "col": 1,
+                  "delta": -1
+                },
+                {
+                  "team": "T4 Bot",
+                  "row": 2,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T5 Bot",
+                  "row": 2,
+                  "col": 2,
+                  "delta": 1
+                },
+                {
+                  "team": "T6 Bot",
+                  "row": 3,
+                  "col": 1,
+                  "delta": 1
+                }
+              ]
+            },
+            {
+              "action": 3,
+              "moves": [
+                {
+                  "team": "T1 Gen3",
+                  "row": 3,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T2 My AI",
+                  "row": 3,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T3 Bot",
+                  "row": 1,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T4 Bot",
+                  "row": 3,
+                  "col": 2,
+                  "delta": 1
+                },
+                {
+                  "team": "T5 Bot",
+                  "row": 3,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T6 Bot",
+                  "row": 1,
+                  "col": 3,
+                  "delta": -1
+                }
+              ]
+            },
+            {
+              "action": 4,
+              "moves": [
+                {
+                  "team": "T1 Gen3",
+                  "row": 1,
+                  "col": 2,
+                  "delta": -1
+                },
+                {
+                  "team": "T2 My AI",
+                  "row": 3,
+                  "col": 1,
+                  "delta": -1
+                },
+                {
+                  "team": "T3 Bot",
+                  "row": 3,
+                  "col": 3,
+                  "delta": 1
+                },
+                {
+                  "team": "T4 Bot",
+                  "row": 2,
+                  "col": 2,
+                  "delta": -1
+                },
+                {
+                  "team": "T5 Bot",
+                  "row": 3,
+                  "col": 2,
+                  "delta": -1
+                },
+                {
+                  "team": "T6 Bot",
+                  "row": 1,
+                  "col": 1,
+                  "delta": -1
+                }
+              ]
+            }
+          ],
+          "state": {
+            "T1 Gen3": {
+              "matrix": [
+                0,
+                -1,
+                0,
+                0,
+                -3,
+                0,
+                0,
+                -2,
+                -4
+              ],
+              "det": 0,
+              "ax": 18
+            },
+            "T2 My AI": {
+              "matrix": [
+                2,
+                0,
+                -1,
+                0,
+                -2,
+                0,
+                -1,
+                0,
+                -4
+              ],
+              "det": 18,
+              "ax": 17
+            },
+            "T3 Bot": {
+              "matrix": [
+                -1,
+                0,
+                -3,
+                0,
+                -2,
+                -1,
+                -2,
+                0,
+                1
+              ],
+              "det": 14,
+              "ax": 11
+            },
+            "T4 Bot": {
+              "matrix": [
+                2,
+                0,
+                -1,
+                0,
+                -2,
+                -2,
+                0,
+                2,
+                -1
+              ],
+              "det": 12,
+              "ax": 12
+            },
+            "T5 Bot": {
+              "matrix": [
+                -2,
+                0,
+                0,
+                0,
+                2,
+                -1,
+                0,
+                -1,
+                -4
+              ],
+              "det": 18,
+              "ax": 14
+            },
+            "T6 Bot": {
+              "matrix": [
+                0,
+                0,
+                -3,
+                0,
+                2,
+                0,
+                2,
+                0,
+                -1
+              ],
+              "det": 12,
+              "ax": 10
+            }
+          }
+        },
+        {
+          "round": 5,
+          "winner": "T5 Bot",
+          "privilege": {
+            "cmd": "zero",
+            "scope": "self"
+          },
+          "x_vec": [
+            0,
+            -2,
+            -3
+          ],
+          "actions": [
+            {
+              "action": 1,
+              "moves": [
+                {
+                  "team": "T1 Gen3",
+                  "row": 2,
+                  "col": 2,
+                  "delta": -1
+                },
+                {
+                  "team": "T2 My AI",
+                  "row": 3,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T3 Bot",
+                  "row": 2,
+                  "col": 2,
+                  "delta": -1
+                },
+                {
+                  "team": "T4 Bot",
+                  "row": 1,
+                  "col": 1,
+                  "delta": 1
+                },
+                {
+                  "team": "T5 Bot",
+                  "row": 2,
+                  "col": 2,
+                  "delta": 1
+                },
+                {
+                  "team": "T6 Bot",
+                  "row": 3,
+                  "col": 1,
+                  "delta": 1
+                }
+              ]
+            },
+            {
+              "action": 2,
+              "moves": [
+                {
+                  "team": "T1 Gen3",
+                  "row": 3,
+                  "col": 2,
+                  "delta": -1
+                },
+                {
+                  "team": "T2 My AI",
+                  "row": 1,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T3 Bot",
+                  "row": 3,
+                  "col": 1,
+                  "delta": -1
+                },
+                {
+                  "team": "T4 Bot",
+                  "row": 3,
+                  "col": 2,
+                  "delta": 1
+                },
+                {
+                  "team": "T5 Bot",
+                  "row": 1,
+                  "col": 1,
+                  "delta": -1
+                },
+                {
+                  "team": "T6 Bot",
+                  "row": 2,
+                  "col": 2,
+                  "delta": 1
+                }
+              ]
+            },
+            {
+              "action": 3,
+              "moves": [
+                {
+                  "team": "T1 Gen3",
+                  "row": 3,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T2 My AI",
+                  "row": 2,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T3 Bot",
+                  "row": 1,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T4 Bot",
+                  "row": 2,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T5 Bot",
+                  "row": 3,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T6 Bot",
+                  "row": 1,
+                  "col": 3,
+                  "delta": -1
+                }
+              ]
+            },
+            {
+              "action": 4,
+              "moves": [
+                {
+                  "team": "T1 Gen3",
+                  "row": 2,
+                  "col": 1,
+                  "delta": -1
+                },
+                {
+                  "team": "T2 My AI",
+                  "row": 2,
+                  "col": 2,
+                  "delta": -1
+                },
+                {
+                  "team": "T3 Bot",
+                  "row": 1,
+                  "col": 2,
+                  "delta": 1
+                },
+                {
+                  "team": "T4 Bot",
+                  "row": 3,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T5 Bot",
+                  "row": 2,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T6 Bot",
+                  "row": 1,
+                  "col": 1,
+                  "delta": -1
+                }
+              ]
+            },
+            {
+              "action": 5,
+              "moves": [
+                {
+                  "team": "T1 Gen3",
+                  "row": 1,
+                  "col": 2,
+                  "delta": -1
+                },
+                {
+                  "team": "T2 My AI",
+                  "row": 1,
+                  "col": 2,
+                  "delta": -1
+                },
+                {
+                  "team": "T3 Bot",
+                  "row": 2,
+                  "col": 3,
+                  "delta": -1
+                },
+                {
+                  "team": "T4 Bot",
+                  "row": 2,
+                  "col": 2,
+                  "delta": -1
+                },
+                {
+                  "team": "T5 Bot",
+                  "row": 3,
+                  "col": 2,
+                  "delta": -1
+                },
+                {
+                  "team": "T6 Bot",
+                  "row": 3,
+                  "col": 3,
+                  "delta": -1
+                }
+              ]
+            }
+          ],
+          "state": {
+            "T1 Gen3": {
+              "matrix": [
+                0,
+                -2,
+                0,
+                -1,
+                -4,
+                0,
+                0,
+                -3,
+                -5
+              ],
+              "det": 10,
+              "ax": 33
+            },
+            "T2 My AI": {
+              "matrix": [
+                2,
+                -1,
+                -2,
+                0,
+                -3,
+                -1,
+                -1,
+                0,
+                -5
+              ],
+              "det": 35,
+              "ax": 32
+            },
+            "T3 Bot": {
+              "matrix": [
+                -1,
+                1,
+                -4,
+                0,
+                -3,
+                -2,
+                -3,
+                0,
+                1
+              ],
+              "det": 45,
+              "ax": 19
+            },
+            "T4 Bot": {
+              "matrix": [
+                3,
+                0,
+                -1,
+                0,
+                -3,
+                -3,
+                0,
+                3,
+                -2
+              ],
+              "det": 45,
+              "ax": 18
+            },
+            "T5 Bot": {
+              "matrix": [
+                -3,
+                0,
+                0,
+                0,
+                3,
+                0,
+                0,
+                -2,
+                -5
+              ],
+              "det": 45,
+              "ax": 13
+            },
+            "T6 Bot": {
+              "matrix": [
+                -1,
+                0,
+                -4,
+                0,
+                3,
+                0,
+                3,
+                0,
+                -2
+              ],
+              "det": 42,
+              "ax": 12
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
