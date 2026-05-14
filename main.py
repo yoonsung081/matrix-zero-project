@@ -493,7 +493,7 @@ class MatrixGame:
     def run_simulation(self, num_episodes=1_200_000):
         has_gen3 = load_gen3_weights()
         print(f"\n학습 시작: {num_episodes:,}회  Gen3 리그: {'ON' if has_gen3 else 'OFF'}")
-        print("구성: Random 15% / 리그(스냅샷) 20% / OldSelf 35% / Gen3 30%\n")
+        print("구성: Random 20% / 리그(스냅샷) 25% / OldSelf 45% / Gen3 10%\n")
 
         results_data = []
         self.learner_history.append(self._snapshot())
