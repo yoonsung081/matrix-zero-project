@@ -500,6 +500,7 @@ class MatrixGame:
 
         TEMP_START, TEMP_END = 1.0, 0.05
         win_cnt = surv_cnt = 0
+        best_win_rate = 0.0
 
         try:
          for ep in tqdm(range(num_episodes)):
@@ -577,8 +578,13 @@ class MatrixGame:
             if final_r >= 5.0: win_cnt += 1
 
             if ep > 0 and ep % 10000 == 0:
-                tqdm.write(f"  ep={ep:,}: 승률={win_cnt/ep*100:.1f}%  "
+                cur_wr = win_cnt / ep
+                tqdm.write(f"  ep={ep:,}: 승률={cur_wr*100:.1f}%  "
                            f"생존율={surv_cnt/ep*100:.1f}%")
+                if cur_wr > best_win_rate:
+                    best_win_rate = cur_wr
+                    self._save("strategy_weights_best.json")
+                    tqdm.write(f"  → best 가중치 저장 ({best_win_rate*100:.1f}%)")
 
             if HAS_GPU and ep % 500 == 0:
                 cp.get_default_memory_pool().free_all_blocks()
