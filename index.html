@@ -15,89 +15,116 @@
         })();
     </script>
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
+        * { box-sizing: border-box; margin: 0; padding: 0; user-select: none; }
         body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; background: #08080a; color: #eee; font-size: 10px; }
-        .app { display: grid; grid-template-columns: 160px 1fr 180px; grid-template-rows: 32px 1fr; height: 100vh; gap: 4px; padding: 4px; }
-        header { grid-column: 1 / -1; background: #121216; border-radius: 4px; display: flex; align-items: center; padding: 0 10px; gap: 8px; border: 1px solid #333; }
-        h1 { font-size: 0.85rem; color: #00ffcc; white-space: nowrap; }
-        .hud { padding: 2px 8px; border-radius: 10px; background: #1a1a20; border: 1px solid #444; font-weight: bold; font-size: 0.6rem; }
-        .sidebar, .analysis { background: #121216; border-radius: 4px; padding: 5px; display: flex; flex-direction: column; gap: 4px; border: 1px solid #333; overflow: hidden; }
-        .main { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); gap: 4px; height: 100%; min-height: 0; }
-        .card { background: #18181e; border: 1px solid #333; border-radius: 4px; padding: 4px; display: flex; flex-direction: column; justify-content: space-between; position: relative; min-height: 0; }
-        .card.me { border-color: #0cf; background: #0e1413; }
-        .card.active-target { border-color: #ffd700; box-shadow: 0 0 12px rgba(255,215,0,0.3); }
-        .m-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; flex-grow: 1; }
-        .m-grid input { width: 100%; height: 100%; text-align: center; background: #000; color: #fff; border: 1px solid #222; font-size: 0.85rem; font-weight: bold; }
-        .m-grid input.used { border-color: #ff8c00 !important; background: rgba(255,140,0,0.1) !important; }
-        .m-grid input.target { border-color: #0cf !important; background: rgba(0,255,204,0.2) !important; cursor: pointer; animation: pulse 1s infinite; }
-        @keyframes pulse { 50% { opacity: 0.6; } }
-        .det-ax { margin-top: 2px; padding: 1px 4px; background: rgba(0,0,0,0.4); border-radius: 2px; display: flex; justify-content: space-between; font-size: 0.55rem; font-family: monospace; }
-        .btn { width: 100%; padding: 5px; border-radius: 3px; border: none; cursor: pointer; font-weight: bold; font-size: 0.65rem; transition: 0.1s; }
+        .app { display: grid; grid-template-columns: 200px 1fr 200px; grid-template-rows: 40px 1fr; height: 100vh; gap: 8px; padding: 8px; }
+        header { grid-column: 1 / -1; background: #1a1a20; border-radius: 6px; display: flex; align-items: center; padding: 0 15px; gap: 12px; border: 1px solid #444; }
+        h1 { font-size: 1rem; color: #00ffcc; text-transform: uppercase; letter-spacing: 1px; }
+        .hud { padding: 4px 10px; border-radius: 4px; background: #000; border: 1px solid #333; font-weight: bold; font-size: 0.75rem; }
+        .sidebar { background: #121216; border-radius: 6px; padding: 10px; display: flex; flex-direction: column; gap: 8px; border: 1px solid #333; }
+        .main { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); gap: 8px; }
+        .card { background: #16161a; border: 2px solid #333; border-radius: 6px; padding: 8px; display: flex; flex-direction: column; position: relative; }
+        .card.me { border-color: #00c3ff; background: #0c1518; }
+        .m-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; flex-grow: 1; margin: 8px 0; }
+        .m-grid input { width: 100%; height: 35px; text-align: center; background: #000; color: #fff; border: 1px solid #444; font-size: 1rem; font-weight: bold; }
+        .m-grid input:focus { border-color: #00c3ff; outline: none; }
+        .m-grid input.used { border-color: #ff8c00; background: #261600; }
+        .btn { padding: 10px; border-radius: 4px; border: none; cursor: pointer; font-weight: bold; transition: 0.2s; }
+        .btn:hover { filter: brightness(1.2); }
         .btn-start { background: #28a745; color: #fff; }
-        .btn-confirm { background: #6f42c1; color: #fff; }
-        .btn-page { background: #222; border: 1px solid #444; color: #0cf; margin-top: auto; text-decoration: none; text-align: center; }
-        .log { flex-grow: 1; background: #000; padding: 4px; font-size: 0.58rem; overflow-y: auto; border: 1px solid #222; font-family: monospace; }
-        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.92); z-index: 1000; align-items: center; justify-content: center; }
-        .modal { background: #16161a; border: 1px solid #007bff; padding: 12px; border-radius: 8px; width: 280px; }
-        .p-btn { margin-bottom: 5px; text-align: left; padding: 8px; font-size: 0.75rem; background: #222; color: #fff; border: 1px solid #333; }
-        .d-mask { position: absolute; inset: 0; background: #111; border: 1px solid #222; display: none; align-items: center; justify-content: center; color: #333; font-size: 1.1rem; pointer-events: none; z-index: 5; }
-        .d-mask.active { display: flex; }
-        .row-h, .col-h { display: none; position: absolute; gap: 1px; }
-        .row-h { flex-direction: column; left: -14px; top: 12px; bottom: 12px; width: 12px; }
-        .col-h { top: -14px; left: 3px; right: 3px; height: 12px; }
-        .hdl { background: #222; color: #666; font-size: 0.5rem; display: flex; align-items: center; justify-content: center; border-radius: 1px; cursor: pointer; border: 1px solid #333; flex: 1; }
-        .hdl:hover, .hdl.sel { background: #0cf; color: #000; border-color: #0cf; }
+        .log { flex-grow: 1; background: #000; padding: 8px; font-size: 0.7rem; overflow-y: auto; border: 1px solid #222; font-family: 'Courier New', monospace; color: #0f0; }
+        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 1000; align-items: center; justify-content: center; }
+        .modal { background: #1e1e24; border: 2px solid #ffd700; padding: 20px; border-radius: 12px; width: 300px; }
     </style>
 </head>
 <body>
 <div class="overlay" id="priv-ui">
     <div class="modal">
-        <h2 style="color:#ffd700; font-size:0.9rem; text-align:center; margin-bottom:10px;">🏆 승자 특권 선택</h2>
-        <button class="btn p-btn" onclick="startManualPriv('SwapRows')">🔄 행 교환 (Swap Rows)</button>
-        <button class="btn p-btn" onclick="startManualPriv('SwapColumns')">🔄 열 교환 (Swap Columns)</button>
-        <button class="btn p-btn" onclick="startManualPriv('ZeroCell')">💀 원소 무력화 (Set to 0)</button>
-        <button class="btn p-btn" onclick="startManualPriv('SwapCells')">↔️ 원소 위치 교환 (Swap Cells)</button>
-        <p style="font-size:0.55rem; color:#555; text-align:center;">* 대상을 클릭하여 직접 적용하세요.</p>
+        <h2 style="color:#ffd700; text-align:center; margin-bottom:15px;">🏆 승자 특권 행사</h2>
+        <button class="btn" style="width:100%; background:#444; color:#fff; margin-bottom:5px;" onclick="startManualPriv('SwapRows')">🔄 행 교환</button>
+        <button class="btn" style="width:100%; background:#444; color:#fff; margin-bottom:5px;" onclick="startManualPriv('SwapColumns')">🔄 열 교환</button>
+        <button class="btn" style="width:100%; background:#444; color:#fff; margin-bottom:5px;" onclick="startManualPriv('ZeroCell')">💀 원소 무력화</button>
+        <button class="btn" style="width:100%; background:#444; color:#fff;" onclick="startManualPriv('SwapCells')">↔️ 위치 교환</button>
     </div>
 </div>
 <div class="app">
     <header>
         <h1>MATRIX SURVIVAL</h1>
-        <div id="h-rnd" class="hud">R1</div>
-        <div id="h-x" class="hud" style="color:#ffd700">X=[0,0,0]</div>
-        <div id="h-act" class="hud" style="color:#0cf">남은: 1</div>
-        <div id="t-status" style="margin-left:auto; font-weight:bold; font-size:0.65rem;"></div>
+        <div id="h-rnd" class="hud">라운드 1</div>
+        <div id="h-act" class="hud">행동: 1</div>
+        <div id="t-status" style="margin-left:auto; font-weight:bold;">대기 중</div>
     </header>
     <div class="sidebar">
-        <button class="btn btn-start" onclick="start()">🎮 게임 시작</button>
-        <button class="btn btn-confirm" id="btn-conf" onclick="confirm()" disabled>✅ 내 수 확정</button>
-        <button class="btn" style="background:#333; color:#777;" onclick="resetAll()">🧹 초기화</button>
-        <button class="btn" id="btn-rev" style="background:#222; color:#555;" onclick="toggleDiag()">🔓 대각 공개</button>
+        <button class="btn btn-start" onclick="start()">게임 시작</button>
+        <button class="btn" id="btn-conf" onclick="confirm()" disabled>확정</button>
         <div class="log" id="log"></div>
-        <a href="advice.html" class="btn btn-page">📊 조언 모드</a>
     </div>
     <div class="main" id="m-cont"></div>
-    <div class="analysis" id="rank"></div>
 </div>
 <script>
-    const S = { active:false, round:1, actions:1, used:new Set(), turn:0, priv:null, sel:[] };
-    const D_IDX = [0, 4, 8];
-
+    const S = { active:false, round:1, actions:1, used:new Set(), priv:null, sel:[] };
     function det(m) { return m[0]*(m[4]*m[8]-m[5]*m[7]) - m[1]*(m[3]*m[8]-m[5]*m[6]) + m[2]*(m[3]*m[7]-m[4]*m[6]); }
     function getX(ms) { let x=[0,0,0]; for(let i=0;i<3;i++) x[i]=Math.floor(ms.reduce((s,m)=>s+m[i*4],0)/6); return x; }
-    function ax(m, x) { return m[0]*x[0]+m[1]*x[1]+m[2]*x[2]+m[3]*x[0]+m[4]*x[1]+m[5]*x[2]+m[6]*x[0]+m[7]*x[1]+m[8]*x[2]; }
-
+    function ax(m, x) { return m.reduce((acc,v,i)=>acc+v*(x[i%3]||0), 0); }
     function getMs() { return Array.from({length:6}, (_,t)=>Array.from({length:9}, (__,i)=>parseInt(document.getElementById(`t${t}-c${i}`).value)||0)); }
-
     function sync() {
         const ms = getMs(), x = getX(ms);
-        document.getElementById('h-rnd').textContent = `R${S.round}`;
-        document.getElementById('h-act').textContent = `남은: ${S.actions}`;
-        document.getElementById('h-x').textContent = `X=[${x.join(',')}]`;
+        document.getElementById('h-rnd').textContent = `라운드 ${S.round}`;
+        document.getElementById('h-act').textContent = `행동: ${S.actions}`;
         ms.forEach((m,t)=>{
             const d=det(m), a=ax(m,x);
-            document.getElementById(`d-${t}`).innerHTML = `<span>det: <b style="${d===0?'color:#f44':'color:#fff'}">${d}</b></span><span>Ax: <b style="color:#0cf">${a.toFixed(1)}</b></span>`;
+            document.getElementById(`d-${t}`).innerHTML = `det:${d} | Ax:${a.toFixed(1)}`;
         });
+    }
+    function start() {
+        S.active=true; S.round=1; document.getElementById('btn-conf').disabled=false;
+        for(let t=0;t<6;t++) for(let i=0;i<9;i++){ const n=document.getElementById(`t${t}-c${i}`); n.value=0; n.disabled=(t>0); n.classList.remove('used'); }
+        nxt();
+    }
+    function nxt() {
+        S.actions=S.round; S.used.clear();
+        for(let i=0;i<9;i++){ const n=document.getElementById(`t0-c${i}`); n.disabled=false; n.classList.remove('used'); }
+        sync(); document.getElementById('t-status').innerHTML='<span style="color:#0cf">플레이어</span>';
+    }
+    async function confirm() {
+        if(S.actions>0) return alert('모든 행동을 사용하세요.');
+        document.getElementById('t-status').innerHTML='<span style="color:#f66">AI 연산중</span>';
+        for(let t=1;t<=5;t++){
+            await new Promise(r=>setTimeout(r,500));
+            let ms=getMs(), m=[...ms[t]], x=getX(ms);
+            for(let a=0;a<S.round;a++){
+                let b={i:-1, s:-1e9};
+                for(let i=0;i<9;i++){
+                    let n=[...m]; n[i]+=(Math.random()>0.5?1:-1);
+                    let s=(S.round<=2?ax(n,x):det(n));
+                    if(s>b.s){ b={i,s}; }
+                }
+                if(b.i!==-1) m[b.i]+=(Math.random()>0.5?1:-1);
+            }
+            for(let i=0;i<9;i++) document.getElementById(`t${t}-c${i}`).value=m[i];
+        }
+        check();
+    }
+    function check() {
+        const ms=getMs(), x=getX(ms), r=S.round;
+        const sc=ms.map((m,i)=>({s:r<=2?ax(m,x):det(m), i})).sort((a,b)=>b.s-a.s);
+        if(sc[0].i===0) document.getElementById('priv-ui').style.display='flex';
+        else { setTimeout(nextR, 1000); }
+    }
+    function nextR() { if(S.round<5){ S.round++; nxt(); } else alert('게임 종료'); }
+    const cont = document.getElementById('m-cont');
+    for(let t=0;t<6;t++){
+        const c=document.createElement('div'); c.className=`card ${t===0?'me':''}`;
+        c.innerHTML=`<h3>TEAM ${t+1}</h3><div class="m-grid"></div><div class="det-ax" id="d-${t}"></div>`;
+        const g=c.querySelector('.m-grid');
+        for(let i=0;i<9;i++){
+            const n=document.createElement('input'); n.id=`t${t}-c${i}`; n.type='number'; n.value=0;
+            n.addEventListener('input', ()=>{ if(t===0 && S.actions>0 && !S.used.has(i)){ S.actions--; S.used.add(i); n.classList.add('used'); n.disabled=true; sync(); } });
+            g.appendChild(n);
+        }
+        cont.appendChild(c);
+    }
+</script>
         const rk = ms.map((m,i)=>({i,s:S.round<=2?ax(m,x):det(m)})).sort((a,b)=>b.s-a.s);
         let h = `<div style="font-size:0.6rem; color:#444; margin-bottom:4px;">RANKING</div>`;
         rk.forEach((r,i)=>{ h += `<div style="display:flex; justify-content:space-between; padding:2px 0; border-bottom:1px solid #222; ${r.i===0?'color:#0cf; font-weight:bold;':''}"><span>${i+1}위 T${r.i+1}</span><span>${r.s.toFixed(1)}</span></div>`; });

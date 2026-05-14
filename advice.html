@@ -3,211 +3,107 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Matrix Strategy: Assistant (Action Set)</title>
-    <script>
-        window.addEventListener('unhandledrejection', e => { 
-            if (e.reason && e.reason.message && (e.reason.message.includes('message channel closed') || e.reason.message.includes('listener indicated'))) {
-                e.preventDefault(); e.stopImmediatePropagation();
-            }
-        }, true);
-    </script>
+    <title>Matrix Strategy: Assistant</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; background: #09090b; color: #eee; font-size: 10.5px; }
-        .app-container { display: grid; grid-template-columns: 170px 1fr 180px; grid-template-rows: 32px 1fr; height: 100vh; gap: 3px; padding: 3px; }
-        header { grid-column: 1 / -1; background: #16161a; display: flex; align-items: center; padding: 0 10px; gap: 8px; border: 1px solid #333; border-radius: 4px; }
-        h1 { font-size: 0.8rem; color: #00ffcc; white-space: nowrap; }
-        .hud-item { padding: 2px 6px; border-radius: 10px; background: #222; border: 1px solid #444; font-weight: bold; font-size: 0.6rem; }
-        .sidebar, .analysis-bar { background: #16161a; border-radius: 4px; padding: 5px; display: flex; flex-direction: column; gap: 3px; border: 1px solid #333; overflow: hidden; }
-        .main-content { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); gap: 3px; height: 100%; min-width: 0; }
-        .team-card { background: #1c1c21; border: 1px solid #333; border-radius: 4px; padding: 3px; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
+        body { width: 100vw; height: 100vh; overflow: hidden; font-family: 'Segoe UI', system-ui, sans-serif; background: #09090b; color: #eee; font-size: 10px; }
+        .app-container { display: grid; grid-template-columns: 180px 1fr 180px; grid-template-rows: 40px 1fr; height: 100vh; gap: 4px; padding: 4px; }
+        header { grid-column: 1 / -1; background: #16161a; display: flex; align-items: center; padding: 0 10px; gap: 10px; border: 1px solid #333; border-radius: 4px; }
+        .sidebar { background: #16161a; border-radius: 4px; padding: 8px; display: flex; flex-direction: column; gap: 5px; border: 1px solid #333; overflow-y: auto; }
+        .main-content { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); gap: 4px; height: 100%; min-width: 0; }
+        .team-card { background: #1c1c21; border: 1px solid #333; border-radius: 4px; padding: 4px; display: flex; flex-direction: column; justify-content: space-between; }
         .team-card.is-focus { border-color: #0cf; background: #111a19; }
         .matrix-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; flex-grow: 1; }
-        .matrix-grid input { width: 100%; height: 100%; text-align: center; background: #000; color: #fff; border: 1px solid #222; font-size: 0.8rem; font-weight: bold; }
-        .det-box { margin-top: 2px; padding: 1px 3px; background: rgba(0,0,0,0.4); border-radius: 2px; display: flex; justify-content: space-between; font-size: 0.55rem; font-family: monospace; }
-        .btn { width: 100%; padding: 4px; border-radius: 3px; border: none; cursor: pointer; font-weight: bold; font-size: 0.65rem; transition: 0.1s; }
-        .btn-page { background: #222; border: 1px solid #444; color: #ff6b6b; margin-top: auto; text-decoration: none; text-align: center; line-height: 1.5; }
-        
-        .rec-set { background: #1a1a1d; border-left: 2px solid #0cf; padding: 5px; margin-bottom: 6px; border-radius: 2px; transition: background 0.2s; }
-        .rec-set:hover { background: #25252a; }
-        .rec-header { font-weight: bold; color: #ffd700; margin-bottom: 3px; border-bottom: 1px solid #333; padding-bottom: 2px; font-size: 0.65rem; }
-        .rec-item { font-size: 0.6rem; color: #ccc; margin-bottom: 1px; }
-        
-        select { width: 100%; background: #222; color: #eee; border: 1px solid #444; padding: 3px; font-size: 0.6rem; border-radius: 3px; }
-        .cell-wrapper { position: relative; width: 100%; height: 100%; }
-        .diag-mask { 
-            position: absolute; inset: 0; background: #111; border: 1px solid #222; 
-            display: flex !important; align-items: center; justify-content: center; 
-            color: #ff8c00; font-size: 1.1rem; pointer-events: none; z-index: 10; font-weight: bold;
-        }
+        .matrix-grid input { width: 100%; height: 100%; text-align: center; background: #000; color: #fff; border: 1px solid #222; font-size: 0.85rem; font-weight: bold; }
+        .btn { width: 100%; padding: 6px; border-radius: 3px; border: none; cursor: pointer; font-weight: bold; font-size: 0.65rem; background:#333; color:#fff; }
+        .rec-item { background: #1a1a1d; border-left: 3px solid #0cf; padding: 5px; margin-bottom: 5px; font-size: 0.65rem; cursor: pointer; }
+        select, input { width: 100%; background: #222; color: #eee; border: 1px solid #444; padding: 3px; font-size: 0.65rem; border-radius: 3px; }
+        .diag-mask { position: absolute; inset: 0; background: #111; display: flex; align-items: center; justify-content: center; color: #ff8c00; font-weight:bold; pointer-events: none; }
     </style>
 </head>
 <body>
 <div class="app-container">
     <header>
-        <h1>STRATEGY ASSISTANT (Interactive)</h1>
-        <div id="hud-x" style="font-size:0.6rem; background:#222; padding:2px 8px; border-radius:10px; color:#ffd700">X=Est.</div>
-        <div style="margin-left:auto; font-weight:bold; color:#0cf; font-size:0.65rem;">ADVICE MODE</div>
+        <h1 style="color:#00ffcc; font-size:0.8rem;">STRATEGY ASSISTANT</h1>
+        <div style="display:flex; align-items:center; gap:5px; margin-left:auto;">
+            <span style="font-size:0.6rem;">Manual X:</span>
+            <input type="number" id="mx0" style="width:30px" oninput="updateHUD()">
+            <input type="number" id="mx1" style="width:30px" oninput="updateHUD()">
+            <input type="number" id="mx2" style="width:30px" oninput="updateHUD()">
+        </div>
     </header>
     <div class="sidebar">
-        <div style="font-size:0.5rem; color:#444;">라운드 설정 (N개 추천)</div>
+        <label style="font-size:0.6rem;">활성 팀 수 (1-6)</label>
+        <input type="number" id="team-count" value="6" min="1" max="6" onchange="initTeams()">
+        <label style="font-size:0.6rem; margin-top:5px;">라운드 (N개)</label>
         <select id="round-select" onchange="updateHUD()">
-            <option value="1">1라운드 (1개 추천)</option>
-            <option value="2">2라운드 (2개 세트)</option>
-            <option value="3">3라운드 (3개 세트)</option>
-            <option value="4">4라운드 (4개 세트)</option>
-            <option value="5">5라운드 (5개 세트)</option>
+            <option value="1">1개 추천</option><option value="2">2개 세트</option>
+            <option value="3">3개 세트</option><option value="4">4개 세트</option><option value="5">5개 세트</option>
         </select>
-        <div style="font-size:0.5rem; color:#444; margin-top:5px;">대상 팀</div>
-        <select id="focus-team" onchange="setFocus()"><option value="0">Team 1</option><option value="1">Team 2</option><option value="2">Team 3</option><option value="3">Team 4</option><option value="4">Team 5</option><option value="5">Team 6</option></select>
-        <div id="recommendations" style="flex-grow:1; overflow-y:auto; margin-top:8px;"></div>
-        <a href="index.html" class="btn btn-page">⚔️ 배틀 모드로 복귀</a>
+        <label style="font-size:0.6rem; margin-top:5px;">조언 대상</label>
+        <select id="focus-team" onchange="setFocus()"></select>
+        <button class="btn" onclick="clearAll()">🧹 초기화</button>
+        <div id="recommendations" style="flex-grow:1; overflow-y:auto; margin-top:5px;"></div>
+        <a href="index.html" class="btn" style="background:#222; color:#ff6b6b; text-decoration:none; text-align:center;">⚔️ 배틀 모드</a>
     </div>
     <div class="main-content" id="matrix-container"></div>
-    <div class="analysis-bar" id="ranking-content"></div>
 </div>
 <script>
-    const DIAG = [0, 4, 8];
-    let focusIdx = 0, weights = null;
-
-    async function loadWeights() {
-        try { const res = await fetch('./strategy_weights.json'); if(res.ok) { weights = (await res.json()).weights; } } catch(e) {}
-        updateHUD();
-    }
-
+    let focusIdx = 0, weights = null, activeTeams = 6;
     function calculateDet(m) { return m[0]*(m[4]*m[8]-m[5]*m[7]) - m[1]*(m[3]*m[8]-m[5]*m[6]) + m[2]*(m[3]*m[7]-m[4]*m[6]); }
     function axSum(m, x) { return m[0]*x[0]+m[1]*x[1]+m[2]*x[2]+m[3]*x[0]+m[4]*x[1]+m[5]*x[2]+m[6]*x[0]+m[7]*x[1]+m[8]*x[2]; }
+    
+    function getX() {
+        return [parseInt(document.getElementById('mx0').value)||0, parseInt(document.getElementById('mx1').value)||0, parseInt(document.getElementById('mx2').value)||0];
+    }
 
-    function getVisibleMatrices() {
-        let all = [];
-        for(let t=0; t<6; t++) {
-            let m = [];
-            for(let i=0; i<9; i++) {
-                let v = parseInt(document.getElementById(`t${t}-c${i}`).value) || 0;
-                if(t > 0 && DIAG.includes(i)) m.push(0); // Hide opponent diags
-                else m.push(v);
+    function initTeams() {
+        activeTeams = parseInt(document.getElementById('team-count').value);
+        const cont = document.getElementById('matrix-container'); cont.innerHTML = '';
+        const fs = document.getElementById('focus-team'); fs.innerHTML = '';
+        for(let t=0; t<activeTeams; t++){
+            const c = document.createElement('div'); c.className=`team-card ${t===focusIdx?'is-focus':''}`;
+            c.innerHTML=`<div class="team-name">TEAM ${t+1}</div><div class="matrix-grid" id="grid-${t}"></div>`;
+            const g = c.querySelector('.matrix-grid');
+            for(let i=0;i<9;i++){
+                const w = document.createElement('div'); w.style.position='relative';
+                const n = document.createElement('input'); n.id=`t${t}-c${i}`; n.value=0; n.oninput=updateHUD;
+                w.appendChild(n);
+                if(t>0 && [0,4,8].includes(i)) { const m=document.createElement('div'); m.className='diag-mask'; m.textContent='?'; w.appendChild(m); }
+                g.appendChild(w);
             }
-            all.push(m);
+            cont.appendChild(c);
+            fs.innerHTML += `<option value="${t}">Team ${t+1}</option>`;
         }
-        return all;
+        updateHUD();
     }
 
     function updateHUD() {
-        const visibleMats = getVisibleMatrices();
-        const round = parseInt(document.getElementById('round-select').value);
+        const mats = Array.from({length:activeTeams}, (_,t)=>Array.from({length:9}, (__,i)=>parseInt(document.getElementById(`t${t}-c${i}`).value)||0));
+        let x = getX();
+        if(x.every(v=>v===0)) {
+            x = [0,0,0]; for(let i=0; i<3; i++) x[i] = Math.floor(mats.reduce((s, m) => s + m[i*4], 0) / activeTeams);
+        }
         
-        let x = [0,0,0];
-        for(let i=0; i<3; i++) x[i] = Math.floor(visibleMats.reduce((s, m) => s + m[i*4], 0) / 6);
-        document.getElementById('hud-x').textContent = `X=[${x.join(',')}] (Est.)`;
-
-        visibleMats.forEach((m, t) => {
-            const d = calculateDet(m), ax = axSum(m, x);
-            document.getElementById(`det-${t}`).innerHTML = `<span>det: ${t===0?d:'?'}</span><span>Ax: ${ax.toFixed(1)}</span>`;
-        });
-
-        const ranking = visibleMats.map((m,i)=>({i, s: round<=2?axSum(m,x):calculateDet(m)})).sort((a,b)=>b.s-a.s);
-        let h = `<div style="font-size:0.6rem; color:#444;">EST. RANK</div>`;
-        ranking.forEach((rk, rank) => { h += `<div style="display:flex; justify-content:space-between; padding:2px 0; border-bottom:1px solid #222; ${rk.i===focusIdx?'color:#0cf; font-weight:bold;':''}"><span>${rank+1}위 T${rk.i+1}</span><span>${rk.s.toFixed(1)}</span></div>`; });
-        document.getElementById('ranking-content').innerHTML = h;
-
-        calculateNSetAdvice(visibleMats, x, round);
-    }
-
-    window.applyActionSet = (actionsJson) => {
-        const actions = JSON.parse(decodeURIComponent(actionsJson));
-        actions.forEach(a => {
-            const el = document.getElementById(`t${focusIdx}-c${a.i}`);
-            if(el) el.value = (parseInt(el.value) || 0) + a.d;
-        });
-        updateHUD();
-    };
-
-    function calculateNSetAdvice(allMats, x, n) {
-        const myM = allMats[focusIdx];
-        const isAxMode = n <= 2;
-        let sets = [];
-
-        // Greedy set generation
-        let used = new Set();
-        let currentM = [...myM];
-        let primaryActions = [];
-        for(let step = 0; step < n; step++) {
-            let bestMove = {i:-1, d:0, score:-1e9};
-            for(let i=0; i<9; i++) {
-                if(used.has(i)) continue;
-                for(let d of [-1, 1]) {
-                    let tempM = [...currentM]; tempM[i]+=d;
-                    let nextX = calculateXEst(allMats.map((m,idx)=>idx===focusIdx?tempM:m));
-                    let s = isAxMode ? axSum(tempM, nextX) : calculateDet(tempM);
-                    if(weights && weights[i]) s += (weights[i][tempM[i]] || 0);
-                    if(s > bestMove.score) { bestMove = {i, d, score:s}; }
-                }
-            }
-            if(bestMove.i !== -1) {
-                currentM[bestMove.i] += bestMove.d;
-                used.add(bestMove.i);
-                primaryActions.push(bestMove);
+        let n = parseInt(document.getElementById('round-select').value);
+        let myM = mats[focusIdx], recs = [];
+        for(let i=0; i<9; i++) {
+            for(let d of [-1, 1]) {
+                let m = [...myM]; m[i]+=d;
+                recs.push({i, d, s: n<=2?axSum(m,x):calculateDet(m)});
             }
         }
-        if(primaryActions.length === n) sets.push(primaryActions);
-
-        // Add 2 more sets with variations
-        for(let v = 0; v < 2; v++) {
-            let varActions = []; let vUsed = new Set();
-            while(varActions.length < n) {
-                let i = Math.floor(Math.random()*9);
-                if(!vUsed.has(i)) {
-                    let d = Math.random() > 0.5 ? 1 : -1;
-                    varActions.push({i, d}); vUsed.add(i);
-                }
-            }
-            sets.push(varActions);
-        }
-
+        recs.sort((a,b)=>b.s-a.s);
         let rh = '';
-        sets.forEach((actions, idx) => {
-            if(idx > 0 && n === 1) return;
-            const actionStr = encodeURIComponent(JSON.stringify(actions));
-            rh += `<div class="rec-set" onclick="applyActionSet('${actionStr}')" style="cursor:pointer">
-                <div class="rec-header">추천 세트 ${idx+1} (클릭 적용)</div>`;
-            actions.forEach(a => {
-                rh += `<div class="rec-item"><span class="rec-pos">[${Math.floor(a.i/3)+1}, ${a.i%3+1}]</span> 에 <b>${a.d>0?'+1':'-1'}</b></div>`;
-            });
-            rh += `</div>`;
+        recs.slice(0, 6).forEach(rec => {
+            rh += `<div class="rec-item"><b>[${Math.floor(rec.i/3)+1}, ${rec.i%3+1}]</b>에 ${rec.d>0?'+1':'-1'} 적용<br>예상: ${rec.s.toFixed(1)}</div>`;
         });
         document.getElementById('recommendations').innerHTML = rh;
     }
 
-    function calculateXEst(mats) {
-        let x=[0,0,0]; for(let i=0; i<3; i++) x[i]=Math.floor(mats.reduce((s,m)=>s+m[i*4],0)/6); return x;
-    }
-
-    function setFocus() { 
-        focusIdx = parseInt(document.getElementById('focus-team').value); 
-        document.querySelectorAll('.team-card').forEach((c,i)=>c.classList.toggle('is-focus', i===focusIdx)); 
-        updateHUD(); 
-    }
-    
-    const container = document.getElementById('matrix-container');
-    for(let t=0; t<6; t++) {
-        const card = document.createElement('div'); card.className = `team-card ${t===focusIdx?'is-focus':''}`;
-        card.innerHTML = `<div class="team-card-header"><span class="team-name">TEAM ${t+1}</span></div><div class="matrix-grid"></div><div class="det-box" id="det-${t}"></div>`;
-        const grid = card.querySelector('.matrix-grid');
-        for(let i=0; i<9; i++) {
-            const wrap = document.createElement('div'); wrap.className = 'cell-wrapper';
-            const inp = document.createElement('input'); inp.type = 'number'; inp.id = `t${t}-c${i}`; inp.value = 0;
-            inp.addEventListener('input', updateHUD);
-            inp.addEventListener('focus', function() { this.select(); });
-            wrap.appendChild(inp);
-            if(t>0 && DIAG.includes(i)) {
-                const mask = document.createElement('div'); mask.className = 'diag-mask'; mask.textContent = '?';
-                wrap.appendChild(mask);
-            }
-            grid.appendChild(wrap);
-        }
-        container.appendChild(card);
-    }
-    loadWeights();
+    function setFocus() { focusIdx = parseInt(document.getElementById('focus-team').value); initTeams(); }
+    function clearAll() { document.querySelectorAll('input').forEach(i=>i.value=0); updateHUD(); }
+    initTeams();
 </script>
 </body>
 </html>
