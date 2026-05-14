@@ -424,6 +424,7 @@ class MatrixGame:
                     for k in range(r_num-1, 5))
 
             advantage = G - value   # Actor-Critic advantage (TD error)
+            advantage = float(np.clip(advantage, -3.0, 3.0))  # 폭발 방지
             # baseline 업데이트 (EMA)
             self.reward_baseline += self.baseline_alpha * (G - self.reward_baseline)
 
@@ -461,7 +462,7 @@ class MatrixGame:
         for feat, h, a_idx, logits, value, r_num in episode_privs:
             G = sum(round_rewards[k] * (gamma ** (k - (r_num-1)))
                     for k in range(r_num-1, 5))
-            advantage = G - value
+            advantage = float(np.clip(G - value, -3.0, 3.0))
 
             probs = self._softmax(logits)
             e_a   = cp.zeros(PRIV_DIM, dtype=cp.float32); e_a[a_idx] = 1.0
@@ -515,10 +516,10 @@ class MatrixGame:
             opponents = []
             for _ in range(5):
                 rv = random.random()
-                if rv < 0.15:                        opponents.append("Random")
-                elif rv < 0.35 and len(self.learner_history) > 1:
+                if rv < 0.20:                        opponents.append("Random")
+                elif rv < 0.45 and len(self.learner_history) > 1:
                     opponents.append("League")
-                elif rv < 0.70:                      opponents.append("OldSelf")
+                elif rv < 0.90:                      opponents.append("OldSelf")
                 else:                                opponents.append("Gen3")
 
             ac       = self._current_ac()
