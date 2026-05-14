@@ -5,25 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Matrix Survival Battle</title>
     <script>
-        /**
-         * Robust Error Suppression for Browser Extensions
-         */
         (function() {
-            const SUPPRESSED_KEYWORDS = [
-                'message channel closed',
-                'listener indicated an asynchronous response',
-                'asynchronous response',
-                'Chrome extension',
-                'extension context invalidated'
-            ];
-            function shouldSuppress(msg) {
-                if (!msg) return false;
+            const SUPPRESSED = ['message channel closed', 'listener indicated', 'asynchronous response'];
+            window.onerror = function(msg) {
                 const s = typeof msg === 'string' ? msg : (msg.message || String(msg));
-                return SUPPRESSED_KEYWORDS.some(k => s.toLowerCase().includes(k.toLowerCase()));
-            }
-            window.onerror = function(msg) { if (shouldSuppress(msg)) return true; };
-            window.addEventListener('unhandledrejection', function(e) {
-                if (shouldSuppress(e.reason)) { e.preventDefault(); e.stopImmediatePropagation(); }
+                if (SUPPRESSED.some(k => s.toLowerCase().includes(k))) return true;
+            };
+            window.addEventListener('unhandledrejection', e => {
+                const msg = e.reason ? (e.reason.message || String(e.reason)) : '';
+                if (SUPPRESSED.some(k => msg.toLowerCase().includes(k))) { e.preventDefault(); e.stopImmediatePropagation(); }
             }, true);
         })();
     </script>
@@ -37,8 +27,8 @@
         .app-container {
             display: grid;
             grid-template-columns: 160px 1fr 180px;
-            grid-template-rows: 30px 1fr;
-            height: 100vh; gap: 3px; padding: 3px;
+            grid-template-rows: 32px 1fr;
+            height: 100vh; gap: 4px; padding: 4px;
         }
         header {
             grid-column: 1 / -1; background: #16161a; border-radius: 4px;
@@ -47,20 +37,20 @@
         h1 { font-size: 0.8rem; color: #00ffcc; white-space: nowrap; }
         .hud-item { padding: 2px 6px; border-radius: 10px; background: #222; border: 1px solid #444; font-weight: bold; font-size: 0.6rem; }
         
-        .sidebar, .analysis-bar { background: #16161a; border-radius: 4px; padding: 5px; display: flex; flex-direction: column; gap: 3px; border: 1px solid #333; overflow: hidden; }
+        .sidebar, .analysis-bar { background: #16161a; border-radius: 4px; padding: 5px; display: flex; flex-direction: column; gap: 4px; border: 1px solid #333; overflow: hidden; }
         .main-content { 
             display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); 
-            gap: 3px; height: 100%; min-height: 0;
+            gap: 4px; height: 100%; min-height: 0;
         }
 
         .team-card { 
-            background: #1c1c21; border: 1px solid #333; border-radius: 4px; padding: 3px; 
+            background: #1c1c21; border: 1px solid #333; border-radius: 4px; padding: 4px; 
             display: flex; flex-direction: column; justify-content: space-between; min-height: 0;
             position: relative;
         }
         .team-card.is-player { border-color: #00ffcc; background: #111a19; }
-        .team-card.highlight { animation: flash 0.8s; }
-        @keyframes flash { 0%, 100% { border-color: #333; } 50% { border-color: #ffd700; box-shadow: 0 0 10px #ffd700; } }
+        .team-card.highlight { animation: flash 0.6s; }
+        @keyframes flash { 50% { border-color: #ffd700; box-shadow: 0 0 10px #ffd700; } }
 
         .team-name { font-size: 0.6rem; font-weight: bold; color: #555; }
         .is-player .team-name { color: #00ffcc; }
@@ -68,40 +58,38 @@
         .matrix-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; flex-grow: 1; }
         .matrix-grid input {
             width: 100%; height: 100%; text-align: center; background: #000; color: #fff;
-            border: 1px solid #222; border-radius: 1px; font-size: 0.8rem; padding: 0; font-weight: bold;
+            border: 1px solid #333; border-radius: 1px; font-size: 0.85rem; padding: 0; font-weight: bold;
         }
-        .matrix-grid input.cell-used { border-color: #ff8c00 !important; background: rgba(255,140,0,0.1) !important; color: #ff8c00; }
-        .matrix-grid input.priv-target { border-color: #ffd700 !important; background: rgba(255,215,0,0.2) !important; }
+        .matrix-grid input.cell-used { border-color: #ff8c00 !important; background: rgba(255,140,0,0.15) !important; color: #ff8c00; }
+        .matrix-grid input.selection-target { border-color: #00ffcc !important; background: rgba(0,255,204,0.3) !important; cursor: pointer; }
         
         .det-box {
-            margin-top: 2px; padding: 1px 3px; background: rgba(0,0,0,0.4); border-radius: 2px;
-            display: flex; justify-content: space-between; font-size: 0.55rem; font-family: monospace;
+            margin-top: 2px; padding: 2px 4px; background: rgba(0,0,0,0.4); border-radius: 2px;
+            display: flex; justify-content: space-between; font-size: 0.6rem; font-family: monospace;
         }
         .det-val.zero { color: #ff4444; font-weight: bold; }
         .ax-val { color: #00ffcc; }
 
-        .btn { width: 100%; padding: 4px; border-radius: 3px; border: none; cursor: pointer; font-weight: bold; font-size: 0.65rem; transition: 0.1s; }
+        .btn { width: 100%; padding: 5px; border-radius: 3px; border: none; cursor: pointer; font-weight: bold; font-size: 0.65rem; transition: 0.1s; }
         .btn-start { background: #28a745; color: white; }
         .btn-confirm { background: #6f42c1; color: white; }
-        .btn-page { background: #222; border: 1px solid #444; color: #00ffcc; margin-top: auto; text-decoration: none; text-align: center; }
+        .btn-page { background: #222; border: 1px solid #444; color: #0cf; margin-top: auto; text-decoration: none; text-align: center; }
 
-        .log-area { flex-grow: 1; background: #000; border-radius: 3px; padding: 4px; font-size: 0.58rem; overflow-y: auto; font-family: monospace; border: 1px solid #222; }
+        .log-area { flex-grow: 1; background: #000; border-radius: 3px; padding: 4px; font-size: 0.6rem; overflow-y: auto; font-family: monospace; border: 1px solid #222; line-height: 1.2; }
         .log-ai { color: #ff6b6b; } .log-player { color: #00ffcc; } .log-sys { color: #ffd700; }
 
-        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 1000; align-items: center; justify-content: center; }
-        .modal { background: #1a1a1d; border: 2px solid #007bff; padding: 10px; border-radius: 8px; width: 280px; }
-        .priv-btn { margin-bottom: 4px; text-align: left; padding: 8px; font-size: 0.7rem; background: #222; color: #fff; border: 1px solid #444; }
+        .overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 1000; align-items: center; justify-content: center; }
+        .modal { background: #1a1a1d; border: 2px solid #007bff; padding: 12px; border-radius: 10px; width: 280px; }
+        .priv-btn { margin-bottom: 5px; text-align: left; padding: 8px; font-size: 0.75rem; background: #333; color: #fff; border: 1px solid #444; }
         
-        .mask { position: absolute; inset: 0; background: #111; border: 1px solid #222; display: none; align-items: center; justify-content: center; color: #333; font-size: 1rem; pointer-events: none; }
-        .mask.visible { display: flex; }
+        .cell-wrapper { position: relative; width: 100%; height: 100%; }
+        .diag-mask { position: absolute; inset: 0; background: #111; border: 1px solid #222; display: none; align-items: center; justify-content: center; color: #444; font-size: 1.2rem; pointer-events: none; z-index: 5; }
+        .diag-mask.active { display: flex; }
 
         .row-handles { display: flex; flex-direction: column; gap: 1px; position: absolute; left: -14px; top: 10px; bottom: 12px; }
         .col-handles { display: flex; gap: 1px; position: absolute; top: -14px; left: 3px; right: 3px; height: 12px; }
         .handle { background: #222; color: #444; font-size: 0.5rem; display: flex; align-items: center; justify-content: center; border-radius: 1px; cursor: pointer; border: 1px solid #333; }
-        .handle:hover, .handle.active { background: #00ffcc; color: #000; border-color: #0cf; }
-        .handle-r { width: 11px; height: 32%; } .handle-c { height: 11px; flex: 1; }
-        .team-card.targetable { border-color: #ffd700; cursor: pointer; box-shadow: 0 0 10px rgba(255,215,0,0.4); }
-        .matrix-grid input.selection-target { border-color: #00ffcc !important; background: rgba(0,255,204,0.3) !important; cursor: pointer; }
+        .handle:hover { background: #0cf; color: #000; }
     </style>
 </head>
 <body>
@@ -125,11 +113,11 @@
     </header>
 
     <div class="sidebar">
-        <button class="btn btn-start" onclick="startBattle()">🎮 새 게임 시작</button>
+        <button class="btn btn-start" onclick="startBattle()">🎮 게임 시작</button>
         <button class="btn btn-confirm" id="btn-confirm" onclick="confirmMove()" disabled>✅ 내 수 확정</button>
         <button class="btn" style="background:#333; color:#888;" onclick="clearAllInputs()">🧹 초기화</button>
         <button class="btn" id="btn-reveal" style="background:#222; color:#555;" onclick="toggleDiag()">🔓 대각 공개</button>
-        <div class="log-area" id="log"></div>
+        <div class="log-area" id="log">대전 대기 중...</div>
         <a href="advice.html" class="btn btn-page">📊 조언 모드 이동</a>
     </div>
 
@@ -168,7 +156,8 @@
         ranking.forEach((r, rank) => { h += `<div style="display:flex; justify-content:space-between; padding:2px 0; border-bottom:1px solid #222; ${r.i===0?'color:#0cf; font-weight:bold;':''}"><span>${rank+1}위 T${r.i+1}</span><span>${r.s.toFixed(1)}</span></div>`; });
         document.getElementById('ranking-content').innerHTML = h;
 
-        if(state.actions === 0 && state.playerTurn && !state.privMode) {
+        // 행동 잠금 강화
+        if(state.playerTurn && state.actions === 0) {
             for(let i=0; i<9; i++) document.getElementById(`t0-c${i}`).disabled = true;
         }
     }
@@ -216,6 +205,8 @@
                     }
                     myM[best.idx] += best.d; usedIdx.add(best.idx);
                 }
+                const card = document.querySelector(`.team-card[data-team="${t}"]`);
+                card.classList.add('highlight'); setTimeout(()=>card.classList.remove('highlight'), 500);
                 for(let i=0; i<9; i++) document.getElementById(`t${t}-c${i}`).value = myM[i];
                 updateHUD();
                 if(++processed === 5) checkRoundEnd();
@@ -224,8 +215,8 @@
     }
 
     function checkRoundEnd() {
-        const mats = getMatrices();
-        const scores = mats.map(m => state.round <= 2 ? axSum(m, calculateX(mats)) : calculateDet(m));
+        const mats = getMatrices(), x = calculateX(mats);
+        const scores = mats.map(m => state.round <= 2 ? axSum(m, x) : calculateDet(m));
         const sorted = scores.map((s,i)=>({s,i})).sort((a,b)=>b.s-a.s);
         let winIdx = (sorted[0].s > sorted[1].s) ? sorted[0].i : -1;
         if(winIdx === -1) {
@@ -246,7 +237,7 @@
         document.querySelectorAll('.row-handles, .col-handles').forEach(h => h.style.display = (mode === 'swap_rowcol' ? 'flex' : 'none'));
     }
 
-    function handleTeamClick(tIdx) { if(state.privMode) { state.privTarget = tIdx; addLog('sys', `Team ${tIdx+1} 선택됨.`); } }
+    function handleTeamClick(tIdx) { if(state.privMode) { state.privTarget = tIdx; addLog('sys', `Team ${tIdx+1} 선택.`); } }
 
     function handleCellClick(tIdx, cIdx) {
         if(!state.privMode) return;
@@ -295,9 +286,9 @@
 
     function getFinalWinner(mats) {
         const x = calculateX(mats);
-        const survivors = mats.map((m,i)=>({i, det:calculateDet(m), ax:axSum(m,x)})).filter(p=>p.det!==0);
+        const survivors = mats.map((m,i)=>({i, d:calculateDet(m), ax:axSum(m,x)})).filter(p=>p.d!==0);
         if(survivors.length === 0) return {winner:-1};
-        survivors.sort((a,b)=>b.ax-a.ax || Math.abs(b.det)-Math.abs(a.det));
+        survivors.sort((a,b)=>b.ax-a.ax || Math.abs(b.d)-Math.abs(a.d));
         return {winner: survivors[0].i};
     }
 
@@ -312,10 +303,10 @@
     }
 
     function toggleDiag() {
-        const masks = document.querySelectorAll('.mask');
-        const isShown = masks[0].classList.contains('visible');
-        masks.forEach(m => m.classList.toggle('visible', !isShown));
-        document.getElementById('btn-reveal').innerHTML = !isShown ? '🔓 대각 공개' : '🔒 대각 숨김';
+        const masks = document.querySelectorAll('.diag-mask');
+        const currentlyMasked = masks[0].classList.contains('active');
+        masks.forEach(m => m.classList.toggle('active', !currentlyMasked));
+        document.getElementById('btn-reveal').innerHTML = !currentlyMasked ? '🔒 대각 숨김' : '🔓 대각 공개';
     }
 
     const container = document.getElementById('matrix-container');
@@ -336,7 +327,8 @@
             inp.addEventListener('focus', function() { this.select(); });
             wrap.appendChild(inp);
             if(t>0 && DIAG.includes(i)) {
-                const mask = document.createElement('div'); mask.className = 'mask visible'; mask.id = `mask-t${t}-c${i}`; mask.textContent = '?'; wrap.appendChild(mask);
+                const mask = document.createElement('div'); mask.className = 'diag-mask active'; mask.id = `mask-t${t}-c${i}`; mask.textContent = '?';
+                wrap.appendChild(mask);
             }
             grid.appendChild(wrap);
         }

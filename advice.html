@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Matrix Strategy: Assistant (AI Weights)</title>
+    <title>Matrix Strategy: Assistant (Limited Info)</title>
     <script>
         window.addEventListener('unhandledrejection', e => { 
             if (e.reason && e.reason.message && (e.reason.message.includes('message channel closed') || e.reason.message.includes('listener indicated'))) {
@@ -20,109 +20,116 @@
         .hud-item { padding: 2px 6px; border-radius: 10px; background: #222; border: 1px solid #444; font-weight: bold; font-size: 0.6rem; }
         .sidebar, .analysis-bar { background: #16161a; border-radius: 4px; padding: 5px; display: flex; flex-direction: column; gap: 3px; border: 1px solid #333; overflow: hidden; }
         .main-content { display: grid; grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(2, 1fr); gap: 3px; height: 100%; min-width: 0; }
-        .team-card { background: #1c1c21; border: 1px solid #333; border-radius: 4px; padding: 3px; display: flex; flex-direction: column; justify-content: space-between; }
+        .team-card { background: #1c1c21; border: 1px solid #333; border-radius: 4px; padding: 3px; display: flex; flex-direction: column; justify-content: space-between; position: relative; }
         .team-card.is-focus { border-color: #0cf; background: #111a19; }
         .matrix-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; flex-grow: 1; }
         .matrix-grid input { width: 100%; height: 100%; text-align: center; background: #000; color: #fff; border: 1px solid #222; font-size: 0.8rem; font-weight: bold; }
         .det-box { margin-top: 2px; padding: 1px 3px; background: rgba(0,0,0,0.4); border-radius: 2px; display: flex; justify-content: space-between; font-size: 0.55rem; font-family: monospace; }
         .btn { width: 100%; padding: 4px; border-radius: 3px; border: none; cursor: pointer; font-weight: bold; font-size: 0.65rem; }
-        .btn-danger { background: #333; color: #aaa; }
         .btn-page { background: #222; border: 1px solid #444; color: #ff6b6b; margin-top: auto; text-decoration: none; text-align: center; line-height: 1.5; }
         .rec-item { background: #1a1a1d; border-left: 2px solid #0cf; padding: 4px; margin-bottom: 4px; border-radius: 2px; }
         .rec-pos { color: #0cf; font-weight: bold; font-size: 0.7rem; }
-        .rec-val { color: #ffd700; font-weight: bold; }
         select { width: 100%; background: #222; color: #eee; border: 1px solid #444; padding: 3px; font-size: 0.6rem; border-radius: 3px; }
-        .ai-badge { background: #6f42c1; color: #fff; padding: 1px 4px; border-radius: 3px; font-size: 0.5rem; margin-left: 5px; vertical-align: middle; }
+        .cell-wrapper { position: relative; width: 100%; height: 100%; }
+        .diag-mask { position: absolute; inset: 0; background: #111; border: 1px solid #222; display: flex; align-items: center; justify-content: center; color: #444; font-size: 1.1rem; pointer-events: none; z-index: 5; }
     </style>
 </head>
 <body>
 <div class="app-container">
     <header>
-        <h1>STRATEGY ASSISTANT <span class="ai-badge" id="ai-status">WAIT...</span></h1>
-        <div id="hud-x" class="hud-item" style="color:#ffd700">X=[0,0,0]</div>
+        <h1>STRATEGY ASSISTANT (Hidden Diags)</h1>
+        <div id="hud-x" class="hud-item" style="color:#ffd700">X=Unknown</div>
         <div style="margin-left:auto; font-weight:bold; color:#0cf; font-size:0.65rem;">ADVICE MODE</div>
     </header>
     <div class="sidebar">
-        <div style="font-size:0.5rem; color:#444;">분석 기준</div>
+        <div style="font-size:0.5rem; color:#444;">분석 기준 (상대 대각 제외)</div>
         <select id="round-select" onchange="updateHUD()">
             <option value="1">R1-2: Ax 합산 최적화</option>
             <option value="3">R3-5: 행렬식 생존 최적화</option>
         </select>
         <div style="font-size:0.5rem; color:#444; margin-top:5px;">조언 대상</div>
-        <select id="focus-team" onchange="setFocus()">
-            <option value="0">Team 1</option>
-            <option value="1">Team 2</option>
-            <option value="2">Team 3</option>
-            <option value="3">Team 4</option>
-            <option value="4">Team 5</option>
-            <option value="5">Team 6</option>
-        </select>
-        <button class="btn btn-danger" style="margin-top:5px;" onclick="clearAll()">🧹 전체 초기화</button>
-        <div style="font-size:0.5rem; color:#444; margin-top:8px;">가중치 기반 AI 조언</div>
-        <div id="recommendations" style="flex-grow:1; overflow-y:auto;"></div>
+        <select id="focus-team" onchange="setFocus()"><option value="0">Team 1</option><option value="1">Team 2</option><option value="2">Team 3</option><option value="3">Team 4</option><option value="4">Team 5</option><option value="5">Team 6</option></select>
+        <div id="recommendations" style="flex-grow:1; overflow-y:auto; margin-top:8px;"></div>
         <a href="index.html" class="btn btn-page">⚔️ 배틀 모드로 복귀</a>
     </div>
     <div class="main-content" id="matrix-container"></div>
     <div class="analysis-bar" id="ranking-content"></div>
 </div>
 <script>
+    const DIAG = [0, 4, 8];
     let focusIdx = 0, weights = null;
+
     async function loadWeights() {
-        try {
-            const res = await fetch('./strategy_weights.json');
-            if(res.ok) { 
-                const data = await res.json();
-                weights = data.weights; 
-                document.getElementById('ai-status').textContent = 'AI ENABLED'; 
-                document.getElementById('ai-status').style.background='#28a745'; 
-            } else throw 1;
-        } catch(e) { document.getElementById('ai-status').textContent = 'HEURISTIC'; }
+        try { const res = await fetch('./strategy_weights.json'); if(res.ok) { weights = (await res.json()).weights; } } catch(e) {}
         updateHUD();
     }
+
     function calculateDet(m) { return m[0]*(m[4]*m[8]-m[5]*m[7]) - m[1]*(m[3]*m[8]-m[5]*m[6]) + m[2]*(m[3]*m[7]-m[4]*m[6]); }
-    function calculateX(mats) { let x=[0,0,0]; for(let i=0; i<3; i++) x[i]=Math.floor(mats.reduce((s,m)=>s+m[i*4],0)/6); return x; }
     function axSum(m, x) { return m[0]*x[0]+m[1]*x[1]+m[2]*x[2]+m[3]*x[0]+m[4]*x[1]+m[5]*x[2]+m[6]*x[0]+m[7]*x[1]+m[8]*x[2]; }
-    function getMatrices() {
+
+    function getMatricesWithHiding() {
         let all = [];
         for(let t=0; t<6; t++) {
-            let m = []; for(let i=0; i<9; i++) m.push(parseInt(document.getElementById(`t${t}-c${i}`).value) || 0);
+            let m = [];
+            for(let i=0; i<9; i++) {
+                let v = parseInt(document.getElementById(`t${t}-c${i}`).value) || 0;
+                // 상대방(T2-6)의 대각선은 조언 엔진이 모른다고 가정 (0으로 처리)
+                if(t > 0 && DIAG.includes(i)) m.push(0);
+                else m.push(v);
+            }
             all.push(m);
         }
         return all;
     }
+
     function updateHUD() {
-        const mats = getMatrices(), x = calculateX(mats), r = parseInt(document.getElementById('round-select').value);
+        const mats = getMatricesWithHiding();
+        const realMats = Array.from({length:6}, (_, t) => Array.from({length:9}, (__, i) => parseInt(document.getElementById(`t${t}-c${i}`).value)||0));
+        
+        // 전역 벡터 X 계산 (상대 대각 제외)
+        let x = [0,0,0];
+        for(let i=0; i<3; i++) {
+            // Team 1(나)의 대각은 확실히 앎, 나머지는 0으로 추정 (또는 현재 아는 대각만 합산)
+            x[i] = Math.floor(mats.reduce((s, m) => s + m[i*4], 0) / 6);
+        }
+        document.getElementById('hud-x').textContent = `X=[${x.join(',')}] (Est.)`;
+
+        const r = parseInt(document.getElementById('round-select').value);
         mats.forEach((m, t) => {
             const d = calculateDet(m), ax = axSum(m, x);
-            document.getElementById(`det-${t}`).innerHTML = `<span>det: <b>${d}</b></span><span>Ax: <b>${ax.toFixed(1)}</b></span>`;
+            document.getElementById(`det-${t}`).innerHTML = `<span>det: ${t===0?d:'?'}</span><span>Ax: ${ax.toFixed(1)}</span>`;
         });
+
         const ranking = mats.map((m,i)=>({i, s: r<=2?axSum(m,x):calculateDet(m)})).sort((a,b)=>b.s-a.s);
-        let h = `<div style="font-size:0.6rem; color:#444;">RANKING</div>`;
-        ranking.forEach((rk, rank) => { h += `<div style="display:flex; justify-content:space-between; padding:2px 0; border-bottom:1px solid #222; ${rk.i===focusIdx?'color:#0cf; font-weight:bold;':''}"><span>${rank+1}위 T${rk.i+1}</span><span>${rk.s.toFixed(1)}</span></div>`; });
+        let h = `<div style="font-size:0.6rem; color:#444;">EST. RANK</div>`;
+        ranking.forEach((rk, rank) => { h += `<div style="display:flex; justify-content:space-between; padding:2px 0; border-bottom:1px solid #222; ${rk.i===focusIdx?'color:#0cf;':''}"><span>${rank+1}위 T${rk.i+1}</span><span>${rk.s.toFixed(1)}</span></div>`; });
         document.getElementById('ranking-content').innerHTML = h;
-        document.getElementById('hud-x').textContent = `X=[${x.join(',')}]`;
-        
+
         let myM = mats[focusIdx], recs = [];
         for(let i=0; i<9; i++) {
             for(let d of [-1, 1]) {
                 let n = [...myM]; n[i]+=d;
-                let nX = calculateX(mats.map((m,idx)=>idx===focusIdx?n:m));
-                let baseS = r<=2?axSum(n,nX):calculateDet(n);
-                let score = baseS;
-                if(weights && weights[i]) score += (weights[i][n[i]] || 0) * 1.5;
-                recs.push({i, d, s: score});
+                let nX = calculateXEst(mats.map((m,idx)=>idx===focusIdx?n:m));
+                let s = r<=2?axSum(n,nX):calculateDet(n);
+                if(weights && weights[i]) s += (weights[i][n[i]] || 0);
+                recs.push({i, d, s});
             }
         }
         recs.sort((a,b)=>b.s-a.s);
         let rh = '';
-        recs.slice(0, 8).forEach(rec => { rh += `<div class="rec-item"><b>[${Math.floor(rec.i/3)+1}, ${rec.i%3+1}]</b> 에 ${rec.d>0?'+1':'-1'}<br>추천 점수: <span class="rec-val">${rec.s.toFixed(1)}</span></div>`; });
+        recs.slice(0, 6).forEach(rec => { rh += `<div class="rec-item"><b>[${Math.floor(rec.i/3)+1}, ${rec.i%3+1}]</b> 에 ${rec.d>0?'+1':'-1'}<br>추정: ${rec.s.toFixed(1)}</div>`; });
         document.getElementById('recommendations').innerHTML = rh;
     }
+
+    function calculateXEst(mats) {
+        let x=[0,0,0]; for(let i=0; i<3; i++) x[i]=Math.floor(mats.reduce((s,m)=>s+m[i*4],0)/6); return x;
+    }
+
     function setFocus() { focusIdx = parseInt(document.getElementById('focus-team').value); document.querySelectorAll('.team-card').forEach((c,i)=>c.classList.toggle('is-focus', i===focusIdx)); updateHUD(); }
-    function clearAll() { document.querySelectorAll('input').forEach(inp => inp.value = 0); updateHUD(); }
+    
     const container = document.getElementById('matrix-container');
     for(let t=0; t<6; t++) {
-        const card = document.createElement('div'); card.className = `team-card ${t===focusIdx?'is-focus':''}`; card.dataset.team = t;
+        const card = document.createElement('div'); card.className = `team-card ${t===focusIdx?'is-focus':''}`;
         card.innerHTML = `<div class="team-card-header"><span class="team-name">TEAM ${t+1}</span></div><div class="matrix-grid"></div><div class="det-box" id="det-${t}"></div>`;
         const grid = card.querySelector('.matrix-grid');
         for(let i=0; i<9; i++) {
@@ -131,6 +138,10 @@
             inp.addEventListener('input', updateHUD);
             inp.addEventListener('focus', function() { this.select(); });
             wrap.appendChild(inp);
+            if(t>0 && DIAG.includes(i)) {
+                const mask = document.createElement('div'); mask.className = 'diag-mask'; mask.textContent = '?';
+                wrap.appendChild(mask);
+            }
             grid.appendChild(wrap);
         }
         container.appendChild(card);
